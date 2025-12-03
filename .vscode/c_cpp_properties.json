@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "compilerPath": "/opt/homebrew/bin/x86_64-w64-mingw32-g++",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "windows-msvc-x64",
+            "includePath": [
+                "${workspaceFolder}"
+            ]
+        }
+    ],
+    "version": 4
+}

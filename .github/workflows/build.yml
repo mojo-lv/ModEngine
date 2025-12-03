@@ -1,0 +1,32 @@
+# 工作流名称
+name: Build ModEngine
+
+# 触发工作流的事件
+on:
+  push: # 当有新的提交推送到以下分支时触发
+    branches: [ "main", "master" ]
+  pull_request: # 当有拉取请求针对以下分支时触发
+    branches: [ "main", "master" ]
+
+# 定义一系列任务 (jobs)
+jobs:
+  build: # 构建任务
+    runs-on: windows-latest # 在最新的 Windows 运行器上执行此任务
+
+    steps: # 构建任务的步骤
+      - name: Checkout repository # 步骤名称：检出代码
+        uses: actions/checkout@v4 # 使用 actions/checkout@v4 动作来检出仓库代码
+
+      - name: Configure CMake # 步骤名称：配置 CMake
+        # 使用 VS 2022 生成器, 它在 windows-latest runner 上是默认可用的
+        # -A x64 用于指定目标平台为 64 位
+        run: cmake -B ${{github.workspace}}/build -G "Visual Studio 17 2022" -A x64 # 运行 CMake 配置项目
+
+      - name: Build project # 步骤名称：构建项目
+        run: cmake --build ${{github.workspace}}/build --config Release # 运行 CMake 构建 Release 配置的项目
+
+      - name: Upload artifact # 步骤名称：上传构建产物
+        uses: actions/upload-artifact@v4 # 使用 actions/upload-artifact@v4 动作来上传文件
+        with: # 动作参数
+          name: ModEngine-DLL # 产物的名称
+          path: ${{github.workspace}}/build/Release/ModEngine.dll # 要上传的文件路径
