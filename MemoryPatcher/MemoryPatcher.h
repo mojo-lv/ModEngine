@@ -1,3 +1,3 @@
 #pragma once
 
-void patchMemory();
+void PatchMemory();

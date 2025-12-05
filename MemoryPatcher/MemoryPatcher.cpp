@@ -23,7 +23,7 @@ static std::vector<BYTE> HexSpaceStrToBytes(const std::wstring& str) {
     return bytes;
 }
 
-static void applyMemoryPatch(size_t targetOffset, std::vector<BYTE> patchBytes)
+static void ApplyMemoryPatch(size_t targetOffset, std::vector<BYTE> patchBytes)
 {
 	DWORD_PTR targetAddress = (DWORD_PTR)GetModuleHandle(NULL) + targetOffset;
 
@@ -36,9 +36,9 @@ static void applyMemoryPatch(size_t targetOffset, std::vector<BYTE> patchBytes)
 	}
 }
 
-void patchMemory()
+void PatchMemory()
 {
-    const DWORD size = 8192;
+    const DWORD size = 2048;
     WCHAR section[size];
     if (GetPrivateProfileSectionW(L"memory", section, size, L".\\modengine.ini")) {
         WCHAR* pCurrent = section;
@@ -51,7 +51,7 @@ void patchMemory()
                     std::wstring value(pEquals + 1);
 
                     size_t offset = std::stoull(key, nullptr, 16);
-                    applyMemoryPatch(offset, HexSpaceStrToBytes(value));
+                    ApplyMemoryPatch(offset, HexSpaceStrToBytes(value));
                 }
             }
 

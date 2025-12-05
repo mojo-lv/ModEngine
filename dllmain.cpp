@@ -1,10 +1,16 @@
 #include "pch.h"
 #include "MemoryPatcher/MemoryPatcher.h"
+#include "LibraryLoader/LibraryLoader.h"
 
-DWORD WINAPI MainThread(HMODULE hModule)
+static void Initialize()
 {
-    patchMemory();
-    return S_OK;
+    if (GetPrivateProfileIntW(L"enable", L"memory", 0, L".\\modengine.ini") == 1) {
+        PatchMemory();
+    }
+
+    if (GetPrivateProfileIntW(L"enable", L"dlls", 0, L".\\modengine.ini") == 1) {
+        LoadDlls();
+    }
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
@@ -12,7 +18,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hModule);
-            CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)MainThread, hModule, NULL, NULL);
+            Initialize();
             break;
         case DLL_PROCESS_DETACH:
             break;

@@ -22,6 +22,7 @@ set(SOURCES
     dllmain.cpp
     DLLWrapper/DInputWrapper.cpp
     MemoryPatcher/MemoryPatcher.cpp
+    LibraryLoader/LibraryLoader.cpp
     DLLWrapper/exports.def
 )
 
