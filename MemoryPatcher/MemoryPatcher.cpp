@@ -42,10 +42,12 @@ void PatchMemory()
     WCHAR section[size];
     if (GetPrivateProfileSectionW(L"memory", section, size, L".\\modengine.ini")) {
         WCHAR* pCurrent = section;
+        WCHAR* pEquals = nullptr;
+        
         while (*pCurrent != L'\0') {
             if (*pCurrent == L'+') {
                 pCurrent++;
-                WCHAR* pEquals = wcschr(pCurrent, L'=');
+                pEquals = wcschr(pCurrent, L'=');
                 if (pEquals && pEquals > pCurrent) {
                     std::wstring key(pCurrent, pEquals - pCurrent);
                     std::wstring value(pEquals + 1);

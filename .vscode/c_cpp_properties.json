@@ -4,7 +4,7 @@
             "name": "Mac",
             "compilerPath": "/opt/homebrew/bin/x86_64-w64-mingw32-g++",
             "cStandard": "c11",
-            "cppStandard": "c++14",
+            "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-x64",
             "includePath": [
                 "${workspaceFolder}"

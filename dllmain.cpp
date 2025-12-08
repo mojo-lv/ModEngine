@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MemoryPatcher/MemoryPatcher.h"
 #include "LibraryLoader/LibraryLoader.h"
+#include "ModLoader/ModLoader.h"
 
 static void Initialize()
 {
@@ -10,6 +11,10 @@ static void Initialize()
 
     if (GetPrivateProfileIntW(L"enable", L"dlls", 0, L".\\modengine.ini") == 1) {
         LoadDlls();
+    }
+
+    if (GetPrivateProfileIntW(L"enable", L"mods", 0, L".\\modengine.ini") == 1) {
+        LoadMods();
     }
 }
 

@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 # 项目名称和版本
 project(ModEngine VERSION 1.0 LANGUAGES C CXX)
 
-# 设置 C++ 标准为 C++14
-set(CMAKE_CXX_STANDARD 14)
+# 设置 C++ 标准为 C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 针对 Visual Studio 编译器的特定配置
@@ -23,6 +23,7 @@ set(SOURCES
     DLLWrapper/DInputWrapper.cpp
     MemoryPatcher/MemoryPatcher.cpp
     LibraryLoader/LibraryLoader.cpp
+    ModLoader/ModLoader.cpp
     DLLWrapper/exports.def
 )
 
@@ -36,6 +37,15 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE pch.h)
 target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
+# 根据平台架构链接不同的 MinHook 库
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(STATUS "Linking against MinHook x64")
+    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/MinHook/MinHook.x64.lib")
+else()
+    message(STATUS "Linking against MinHook x86")
+    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/MinHook/MinHook.x86.lib")
+endif()
 
 # 打印一些信息以供调试
 message(STATUS "Project Name: ${PROJECT_NAME}")
