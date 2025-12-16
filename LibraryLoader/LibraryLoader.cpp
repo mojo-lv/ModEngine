@@ -1,29 +1,37 @@
 #include "pch.h"
 #include "LibraryLoader.h"
 
+namespace fs = std::filesystem;
+
 void LoadDlls()
 {
-    const DWORD size = 2048;
-    WCHAR section[size];
-    if (GetPrivateProfileSectionW(L"dlls", section, size, L".\\modengine.ini")) {
-        WCHAR* pCurrent = section;
-        WCHAR* pEnd = nullptr;
-        WCHAR dllPath[MAX_PATH];
-        
-        while (*pCurrent != L'\0') {
-            if (*pCurrent == L'"') {
-                *pCurrent = L'\\';
-                pEnd = wcschr(pCurrent, L'"');
-                if (pEnd && pEnd > pCurrent + 1) {
-                    *pEnd = L'\0';
-                    GetCurrentDirectoryW(MAX_PATH, dllPath);
-                    lstrcatW(dllPath, pCurrent);
-                    LoadLibraryW(dllPath);
-                    *pEnd = L'"';
-                }
-            }
+    fs::path currentDir = fs::current_path();
+    fs::path dllsDir = currentDir / "dlls";
+    if (!fs::exists(dllsDir) || !fs::is_directory(dllsDir)) {
+        return;
+    }
 
-            pCurrent += wcslen(pCurrent) + 1;
+    std::vector<fs::directory_entry> entries;
+    for (const auto& entry : fs::directory_iterator(dllsDir)) {
+        if (!entry.is_directory()) {
+            auto ext = entry.path().extension().wstring(); // e.g. L".dll"
+            std::transform(ext.begin(), ext.end(), ext.begin(), std::towlower);
+            if (ext == L".dll") {
+                entries.push_back(entry);
+            }
         }
+    }
+
+    if (entries.empty()) {
+        return;
+    }
+
+    std::sort(entries.begin(), entries.end(), 
+        [](const fs::directory_entry& a, const fs::directory_entry& b) {
+            return a.path().filename() < b.path().filename();
+        });
+
+    for (const auto& entry : entries) {
+        LoadLibraryW(entry.path().wstring().c_str());
     }
 }

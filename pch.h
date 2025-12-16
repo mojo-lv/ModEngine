@@ -12,5 +12,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <filesystem>  // C++17
+#include <algorithm>
+#include <cwctype>
 
 #endif //PCH_H
