@@ -64,24 +64,16 @@ static bool ScanModsDir()
     return true;
 }
 
-static void ReplacePrefixWithIndex(WCHAR* string)
+static void ReplacePrefixWithIndex(WCHAR* p)
 {
-    WCHAR* rel = wcschr(string, L'/');
-    if (rel && rel > string + 4 && *(rel - 1) == L':') {
-        auto index = rel_to_index.find(std::wstring(rel + 1));
-        if (index != rel_to_index.end()) {
-            WCHAR* p = string;
-            *p = L'.';
-            *(p + 1) = L'/';
-            *(p + 2) = L'<';
-            *(p + 3) = index->second[0];
-            *(p + 4) = index->second[1];
-            p += 5;
-            while (p < rel) {
-                *p = L'/';
-                p++;
-            }
-        }
+    auto index = rel_to_index.find(std::wstring(p + 7));
+    if (index != rel_to_index.end()) {
+        *p = L'.';
+        *(p + 1) = L'/';
+        *(p + 2) = L'<';
+        *(p + 3) = index->second[0];
+        *(p + 4) = index->second[1];
+        *(p + 5) = L'>';
     }
 }
 
@@ -90,7 +82,8 @@ void* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
     WCHAR* path = p1->path;
     UINT64 len = p1->length;
-    if (len > 6 && path[len - 1] != L'/') {
+    if (len > 7 && path[6] == L'/' && path[5] == L':' && path[0] == L'd') {
+        // data1:/
         ReplacePrefixWithIndex(path);
     }
 
@@ -103,12 +96,12 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
 {
     if (lpFileName) {
         std::wstring_view path_view(lpFileName);
-        if ((path_view.length() > g_cur_len + 1) && (path_view[g_cur_len + 1] == L'<')) {
+        if ((path_view.length() > g_cur_len + 5) && (path_view[g_cur_len + 1] == L'<') && (path_view[g_cur_len + 4] == L'>')) {
             std::wstring index_key(path_view.substr(g_cur_len + 2, 2));
             auto it = index_to_mod.find(index_key);
             if (it != index_to_mod.end()) {
                 std::wstring new_path = it->second;
-                new_path.append(path_view.substr(g_cur_len + 4));
+                new_path.append(path_view.substr(g_cur_len + 5));
                 return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                     dwFlagsAndAttributes, hTemplateFile);
             }
