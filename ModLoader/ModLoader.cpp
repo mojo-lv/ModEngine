@@ -5,10 +5,12 @@
 
 // 405556415441554883ec284d8be0
 #define GET_SEKIRO_PATH_ADDR 0x1401c76d0
+#define GET_SEKIRO_VA_SIZE_ADDR 0x14115ccc0
 
 namespace fs = std::filesystem;
 
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
+static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_CreateFileW fpCreateFileW = nullptr;
 
 static std::unordered_map<std::wstring, std::wstring> rel_to_index;
@@ -77,7 +79,7 @@ static void ReplacePrefixWithIndex(WCHAR* p)
     }
 }
 
-void* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
+SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
 {
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
     WCHAR* path = p1->path;
@@ -88,6 +90,15 @@ void* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5
     }
 
     return p1;
+}
+
+size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
+{
+    size_t size = fpGetSekiroVASize(arg1, arg2);
+    if (wcscmp(arg1, L"MO") == 0) {
+        return size * 3; // 121634816 * 3
+    }
+    return size;
 }
 
 HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
@@ -125,11 +136,17 @@ void LoadMods()
         return;
     }
 
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
+                      reinterpret_cast<LPVOID*>(&fpGetSekiroVASize)) != MH_OK) {
+        return;
+    }
+
     if (MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                       reinterpret_cast<LPVOID*>(&fpCreateFileW)) != MH_OK) {
         return;
     }
 
     MH_EnableHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR));
+    MH_EnableHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR));
     MH_EnableHook((LPVOID)GetProcAddress(GetModuleHandleW(L"kernel32"), "CreateFileW"));
 }

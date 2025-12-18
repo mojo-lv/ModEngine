@@ -5,6 +5,8 @@
 
 static void Initialize()
 {
+    // FILE *stream;
+    // freopen_s(&stream, "log.txt", "w", stdout);
     if (GetPrivateProfileIntW(L"enable", L"memory", 0, L".\\modengine.ini") == 1) {
         PatchMemory();
     }

@@ -10,9 +10,11 @@ typedef struct {
     UINT64 capacity;
 } SekiroPath;
 
-typedef void*(*t_GetSekiroPath)(
+typedef SekiroPath*(*t_GetSekiroPath)(
     SekiroPath*, void*, void*, void*, void*, void*
 );
+
+typedef size_t(*t_GetSekiroVASize)(LPCWSTR, size_t);
 
 typedef HANDLE(WINAPI *t_CreateFileW)(
     LPCWSTR lpFileName,
