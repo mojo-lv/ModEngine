@@ -3,7 +3,6 @@
 #include "MinHook/MinHook.h"
 #include <unordered_map>
 
-// 405556415441554883ec284d8be0
 #define GET_SEKIRO_PATH_ADDR 0x1401c76d0
 #define GET_SEKIRO_VA_SIZE_ADDR 0x14115ccc0
 
@@ -66,19 +65,6 @@ static bool ScanModsDir()
     return true;
 }
 
-static void ReplacePrefixWithIndex(WCHAR* p)
-{
-    auto index = rel_to_index.find(std::wstring(p + 7));
-    if (index != rel_to_index.end()) {
-        *p = L'.';
-        *(p + 1) = L'/';
-        *(p + 2) = L'<';
-        *(p + 3) = index->second[0];
-        *(p + 4) = index->second[1];
-        *(p + 5) = L'>';
-    }
-}
-
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
 {
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
@@ -86,7 +72,15 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
     UINT64 len = p1->length;
     if (len > 7 && path[6] == L'/' && path[5] == L':' && path[0] == L'd') {
         // data1:/
-        ReplacePrefixWithIndex(path);
+        auto index = rel_to_index.find(std::wstring(path + 7));
+        if (index != rel_to_index.end()) {
+            *path = L'.';
+            *(path + 1) = L'/';
+            *(path + 2) = L'<';
+            *(path + 3) = index->second[0];
+            *(path + 4) = index->second[1];
+            *(path + 5) = L'>';
+        }
     }
 
     return p1;

@@ -2,11 +2,10 @@
 #include "MemoryPatcher/MemoryPatcher.h"
 #include "LibraryLoader/LibraryLoader.h"
 #include "ModLoader/ModLoader.h"
+#include "MyTest/MyTest.h"
 
 static void Initialize()
 {
-    // FILE *stream;
-    // freopen_s(&stream, "log.txt", "w", stdout);
     if (GetPrivateProfileIntW(L"enable", L"memory", 0, L".\\modengine.ini") == 1) {
         PatchMemory();
     }
@@ -17,6 +16,10 @@ static void Initialize()
 
     if (GetPrivateProfileIntW(L"enable", L"mods", 0, L".\\modengine.ini") == 1) {
         LoadMods();
+    }
+
+    if (GetPrivateProfileIntW(L"enable", L"test", 0, L".\\modengine.ini") == 1) {
+        Test();
     }
 }
 

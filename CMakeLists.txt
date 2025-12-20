@@ -24,6 +24,7 @@ set(SOURCES
     MemoryPatcher/MemoryPatcher.cpp
     LibraryLoader/LibraryLoader.cpp
     ModLoader/ModLoader.cpp
+    MyTest/MyTest.cpp
     DLLWrapper/exports.def
 )
 
