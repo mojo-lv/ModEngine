@@ -11,11 +11,13 @@ namespace fs = std::filesystem;
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
 static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_CreateFileW fpCreateFileW = nullptr;
+static t_CopyFileW fpCopyFileW = nullptr;
 
 static std::unordered_map<std::wstring, std::wstring> rel_to_index;
 static std::unordered_map<std::wstring, std::wstring> index_to_mod;
 
 static size_t g_cur_len;
+static std::wstring g_save_path;
 
 static bool ScanModsDir()
 {
@@ -46,22 +48,39 @@ static bool ScanModsDir()
     int index = 0;
     WCHAR indexBuffer[3];
     for (const auto& entry : entries) {
-        swprintf(indexBuffer, _countof(indexBuffer), L"%02x", (index++) & 0xFF);
-        std::wstring indexStr(indexBuffer);
-        index_to_mod.emplace(indexStr, entry.path().wstring());
-        
-        for (const auto& p : fs::recursive_directory_iterator(entry.path())) {
-            if (!p.is_directory()) {
-                std::wstring rel = p.path().generic_wstring().substr(entry.path().generic_wstring().length() + 1);
-                std::transform(rel.begin(), rel.end(), rel.begin(), std::towlower);
-                rel_to_index.try_emplace(rel, indexStr);
+        std::wstring filename_wstr = entry.path().filename().wstring();
+        if (filename_wstr.front() == L'_') {
+            if (filename_wstr == L"_dll") {
+                for (const auto& p : fs::directory_iterator(entry.path())) {
+                    if (!p.is_directory()) {
+                        auto ext = p.path().extension().wstring(); // e.g. L".dll"
+                        std::transform(ext.begin(), ext.end(), ext.begin(), std::towlower);
+                        if (ext == L".dll") {
+                            g_LoadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
+                        }
+                    }
+                }
+            } else if (filename_wstr == L"_save") {
+                fs::path savePath = entry.path() / "S0000.sl2";
+                if (fs::exists(savePath) && !fs::is_directory(savePath)) {
+                    g_save_path = savePath.wstring();
+                }
+            }
+        } else {
+            swprintf(indexBuffer, _countof(indexBuffer), L"%02x", (index++) & 0xFF);
+            std::wstring indexStr(indexBuffer);
+            index_to_mod.emplace(indexStr, entry.path().wstring());
+            
+            for (const auto& p : fs::recursive_directory_iterator(entry.path())) {
+                if (!p.is_directory()) {
+                    std::wstring rel = p.path().generic_wstring().substr(entry.path().generic_wstring().length() + 1);
+                    std::transform(rel.begin(), rel.end(), rel.begin(), std::towlower);
+                    rel_to_index.try_emplace(rel, indexStr);
+                }
             }
         }
     }
 
-    if (rel_to_index.empty()) {
-        return false;
-    }
     return true;
 }
 
@@ -110,11 +129,26 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
                 return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                     dwFlagsAndAttributes, hTemplateFile);
             }
+        } else if (!g_save_path.empty()) {
+            if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
+                return fpCreateFileW(g_save_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
+                    dwFlagsAndAttributes, hTemplateFile);
+            }
         }
     }
 
     return fpCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
         dwFlagsAndAttributes, hTemplateFile);
+}
+
+BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bFailIfExists) {
+    if (!g_save_path.empty()) {
+        std::wstring_view path_view(lpExistingFileName);
+        if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
+            return fpCopyFileW(g_save_path.c_str(), lpNewFileName, bFailIfExists);
+        }
+    }
+    return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
 
 void LoadMods()
@@ -123,24 +157,15 @@ void LoadMods()
         return;
     }
 
-    MH_Initialize();
+    MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
+                      reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
-                      reinterpret_cast<LPVOID*>(&fpGetSekiroPath)) != MH_OK) {
-        return;
-    }
+    MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
+                      reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
-                      reinterpret_cast<LPVOID*>(&fpGetSekiroVASize)) != MH_OK) {
-        return;
-    }
+    MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
+                      reinterpret_cast<LPVOID*>(&fpCreateFileW));
 
-    if (MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
-                      reinterpret_cast<LPVOID*>(&fpCreateFileW)) != MH_OK) {
-        return;
-    }
-
-    MH_EnableHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR));
-    MH_EnableHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR));
-    MH_EnableHook((LPVOID)GetProcAddress(GetModuleHandleW(L"kernel32"), "CreateFileW"));
+    MH_CreateHookApi(L"kernel32", "CopyFileW", &HookedCopyFileW, 
+                      reinterpret_cast<LPVOID*>(&fpCopyFileW));
 }

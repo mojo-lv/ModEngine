@@ -26,4 +26,12 @@ typedef HANDLE(WINAPI *t_CreateFileW)(
     HANDLE hTemplateFile
 );
 
+typedef BOOL(WINAPI *t_CopyFileW)(
+    LPCWSTR lpExistingFileName,
+    LPCWSTR lpNewFileName,
+    BOOL    bFailIfExists
+);
+
+extern std::vector<HMODULE> g_LoadedDLLs;
+
 void LoadMods();

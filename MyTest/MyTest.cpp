@@ -28,19 +28,13 @@ size_t HookedProcessInputs(byte* p1, void* p2)
 void Test()
 {
     FILE *stream;
-    freopen_s(&stream, "log.txt", "w", stdout);
+    freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
 
-    int key = GetPrivateProfileIntW(L"test", L"key", 0, L".\\modengine.ini");
+    int key = GetPrivateProfileIntW(L"test", L"key", 0, L".\\mod_engine.ini");
     if (key != 0) {
         test_key = key;
     }
 
-    MH_Initialize();
-
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(PROCESS_INPUTS), &HookedProcessInputs, 
-                      reinterpret_cast<LPVOID*>(&fpProcessInputs)) != MH_OK) {
-        return;
-    }
-
-    MH_EnableHook(reinterpret_cast<LPVOID>(PROCESS_INPUTS));
+    MH_CreateHook(reinterpret_cast<LPVOID>(PROCESS_INPUTS), &HookedProcessInputs, 
+                      reinterpret_cast<LPVOID*>(&fpProcessInputs));
 }

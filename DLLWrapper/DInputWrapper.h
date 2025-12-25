@@ -10,3 +10,5 @@ typedef HRESULT(WINAPI *t_DirectInput8Create)(
     LPVOID *ppvOut,
     LPUNKNOWN punkOuter
 );
+
+extern std::vector<HMODULE> g_LoadedDLLs;

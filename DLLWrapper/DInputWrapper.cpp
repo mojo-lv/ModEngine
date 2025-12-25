@@ -14,6 +14,7 @@ static void GetOriginalFunction()
     lstrcatW(dllPath, L"\\dinput8.dll");
     HMODULE hMod = LoadLibraryW(dllPath);
     if (hMod) {
+        g_LoadedDLLs.push_back(hMod);
         fpOriginal = (t_DirectInput8Create)GetProcAddress(hMod, "DirectInput8Create");
     }
 }
