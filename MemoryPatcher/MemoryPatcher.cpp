@@ -1,25 +1,22 @@
 #include "pch.h"
 #include "MemoryPatcher.h"
 
-static std::vector<BYTE> HexSpaceStrToBytes(const std::wstring& str) {
+static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str) {
     std::vector<BYTE> bytes;
-
-    std::wstring splitStr;
-    BYTE byte;
-    size_t start = 0, end;
-    while ((end = str.find(L' ', start)) != std::wstring::npos) {
-        if (end > start) {
-            splitStr = str.substr(start, end - start);
-            byte = static_cast<BYTE>(std::stoull(splitStr, nullptr, 16));
-            bytes.push_back(byte);
+    size_t start = 0;
+    while (start < str.length()) {
+        size_t end = str.find(L' ', start);
+        if (end == std::wstring_view::npos) {
+            end = str.length();
         }
+
+        if (end > start) {
+            std::wstring segment(str.substr(start, end - start));
+            bytes.push_back(static_cast<BYTE>(std::stoull(segment, nullptr, 16)));
+        }
+
         start = end + 1;
     }
-    if (start < str.length()) {
-        byte = static_cast<BYTE>(std::stoull(str.substr(start), nullptr, 16));
-        bytes.push_back(byte);
-    }
-
     return bytes;
 }
 
@@ -29,39 +26,31 @@ static void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patch
         return;
     }
 
-	DWORD_PTR targetAddress = (DWORD_PTR)GetModuleHandle(NULL) + targetOffset;
+    DWORD_PTR targetAddress = (DWORD_PTR)GetModuleHandle(NULL) + targetOffset;
 
-	DWORD oldProtect;
-	if (VirtualProtect((LPVOID)targetAddress, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtect))
-	{
-		memcpy((LPVOID)targetAddress, patchBytes.data(), patchBytes.size());
-		DWORD tempProtect;
-		VirtualProtect((LPVOID)targetAddress, patchBytes.size(), oldProtect, &tempProtect);
-	}
+    DWORD oldProtect;
+    if (VirtualProtect((LPVOID)targetAddress, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtect))
+    {
+        memcpy((LPVOID)targetAddress, patchBytes.data(), patchBytes.size());
+        VirtualProtect((LPVOID)targetAddress, patchBytes.size(), oldProtect, &oldProtect); // Restore original protection
+    }
 }
 
 void PatchMemory()
 {
-    const DWORD size = 2048;
+    const DWORD size = 4096;
     WCHAR section[size];
-    if (GetPrivateProfileSectionW(L"memory", section, size, L".\\modengine.ini")) {
-        WCHAR* pCurrent = section;
-        WCHAR* pEquals = nullptr;
-        
-        while (*pCurrent != L'\0') {
-            if (*pCurrent == L'+') {
-                pCurrent++;
-                pEquals = wcschr(pCurrent, L'=');
-                if (pEquals && pEquals > pCurrent) {
-                    std::wstring key(pCurrent, pEquals - pCurrent);
-                    std::wstring value(pEquals + 1);
+    if (GetPrivateProfileSectionW(L"memory", section, size, L".\\mod_engine.ini")) {
+        for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
+            std::wstring_view line(pCurrent);
+            size_t equalsPos = line.find(L'=');
+            if (equalsPos != std::wstring_view::npos) {
+                std::wstring key(line.substr(0, equalsPos));
+                std::wstring_view value_view = line.substr(equalsPos + 1);
 
-                    size_t offset = std::stoull(key, nullptr, 16);
-                    ApplyMemoryPatch(offset, HexSpaceStrToBytes(value));
-                }
+                size_t offset = std::stoull(key, nullptr, 16);
+                ApplyMemoryPatch(offset, HexSpaceStrToBytes(value_view));
             }
-
-            pCurrent += wcslen(pCurrent) + 1;
         }
     }
 }
