@@ -6,22 +6,20 @@
 
 std::vector<HMODULE> g_LoadedDLLs;
 
+bool g_test = true;
+
 static void OnAttach()
 {
+    if (g_test) {
+        FILE *stream;
+        freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
+    }
+    PatchMemory();
     MH_Initialize();
-
-    if (GetPrivateProfileIntW(L"enable", L"test", 0, L".\\mod_engine.ini") == 1) {
+    LoadModFiles();
+    if (g_test) {
         Test();
     }
-
-    if (GetPrivateProfileIntW(L"enable", L"mods", 0, L".\\mod_engine.ini") == 1) {
-        LoadMods();
-    }
-
-    if (GetPrivateProfileIntW(L"enable", L"memory", 0, L".\\mod_engine.ini") == 1) {
-        PatchMemory();
-    }
-
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
