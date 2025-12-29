@@ -39,9 +39,9 @@ static void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patch
 
 void PatchMemory()
 {
-    const DWORD size = 2048;
+    const DWORD size = 4096;
     WCHAR section[size];
-    if (GetPrivateProfileSectionW(L"memory", section, size, L".\\modengine.ini")) {
+    if (GetPrivateProfileSectionW(L"memory", section, size, L".\\mod_engine.ini")) {
         WCHAR* pCurrent = section;
         WCHAR* pEquals = nullptr;
         
