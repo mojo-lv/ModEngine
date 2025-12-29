@@ -3,10 +3,12 @@
 #include "MinHook/MinHook.h"
 #include <unordered_map>
 
+#define GET_SEKIRO_VA_SIZE_ADDR 0x14115ccc0
 #define GET_SEKIRO_PATH_ADDR 0x1401c76d0
 
 namespace fs = std::filesystem;
 
+static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
 static t_CreateFileW fpCreateFileW = nullptr;
 static t_CopyFileW fpCopyFileW = nullptr;
@@ -71,6 +73,15 @@ static bool ScanModsDir(fs::path modsDir)
     }
 
     return true;
+}
+
+size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
+{
+    size_t size = fpGetSekiroVASize(arg1, arg2);
+    if (wcscmp(arg1, L"MO") == 0) {
+        return size * 2; // 121634816 * 2
+    }
+    return size;
 }
 
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
@@ -146,6 +157,9 @@ void LoadModFiles()
 
     GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
+        MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
+                      reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
+
         MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
 
