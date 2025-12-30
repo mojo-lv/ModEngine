@@ -2,7 +2,7 @@
 #include "MinHook/MinHook.h"
 #include "MemoryPatcher/MemoryPatcher.h"
 #include "ModLoader/ModLoader.h"
-#include "MyTest/MyTest.h"
+#include "SekiroCombatArt/SekiroCombatArt.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
 
@@ -17,9 +17,7 @@ static void OnAttach()
     PatchMemory();
     MH_Initialize();
     LoadModFiles();
-    if (g_test) {
-        Test();
-    }
+    SetComatArtKey();
     MH_EnableHook(MH_ALL_HOOKS);
 }
 

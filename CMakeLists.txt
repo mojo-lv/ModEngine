@@ -23,7 +23,7 @@ set(SOURCES
     DLLWrapper/DInputWrapper.cpp
     MemoryPatcher/MemoryPatcher.cpp
     ModLoader/ModLoader.cpp
-    MyTest/MyTest.cpp
+    SekiroCombatArt/SekiroCombatArt.cpp
     DLLWrapper/exports.def
 )
 
