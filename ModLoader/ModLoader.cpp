@@ -15,6 +15,7 @@ static t_CopyFileW fpCopyFileW = nullptr;
 
 static std::unordered_map<std::wstring, std::wstring> rel_to_index;
 static std::unordered_map<std::wstring, std::wstring> index_to_mod;
+static std::unordered_map<std::wstring, size_t> va_size;
 
 static size_t g_cur_len;
 static std::wstring g_save_path;
@@ -77,11 +78,13 @@ static bool ScanModsDir(fs::path modsDir)
 
 size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
 {
-    size_t size = fpGetSekiroVASize(arg1, arg2);
-    if (wcscmp(arg1, L"MO") == 0) {
-        return size * 2; // 121634816 * 2
+    std::wstring key(arg1);
+    auto it = va_size.find(key);
+    if (it != va_size.end()) {
+        return it->second;
     }
-    return size;
+
+    return fpGetSekiroVASize(arg1, arg2);
 }
 
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
@@ -134,11 +137,9 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
 
 BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bFailIfExists)
 {
-    if (!g_save_path.empty()) {
-        std::wstring_view path_view(lpExistingFileName);
-        if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
-            return fpCopyFileW(g_save_path.c_str(), lpNewFileName, bFailIfExists);
-        }
+    std::wstring_view path_view(lpExistingFileName);
+    if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
+        return fpCopyFileW(g_save_path.c_str(), lpNewFileName, bFailIfExists);
     }
 
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
@@ -157,9 +158,6 @@ void LoadModFiles()
 
     GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
-                      reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
-
         MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
 
@@ -174,5 +172,26 @@ void LoadModFiles()
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
         MH_CreateHookApi(L"kernel32", "CopyFileW", &HookedCopyFileW, 
                         reinterpret_cast<LPVOID*>(&fpCopyFileW));
+    }
+
+    const DWORD size = 2048;
+    WCHAR section[size];
+    if (GetPrivateProfileSectionW(L"VirtualAlloc", section, size, L".\\mod_engine.ini")) {
+        for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
+            std::wstring_view line(pCurrent);
+            size_t equalsPos = line.find(L'=');
+            if (equalsPos != std::wstring_view::npos) {
+                std::wstring key(line.substr(0, equalsPos));
+                std::wstring value(line.substr(equalsPos + 1));
+
+                size_t size = std::stoull(value, nullptr, 0);
+                va_size.try_emplace(key, size);
+            }
+        }
+
+        if (!va_size.empty()) {
+            MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
+                            reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
+        }
     }
 }
