@@ -6,12 +6,13 @@
 
 static t_ProcessInputs fpProcessInputs = nullptr;
 static int combat_art_key;
+static int g_cool_down = 0;
+static bool g_cool_down_enable = false;
 static bool g_block = false;
 
 size_t HookedProcessInputs(byte* p1, void* p2)
 {
     uint64_t* current_keys_raw = reinterpret_cast<uint64_t*>(p1 + 0x10);
-
     if ((*current_keys_raw & 5) == 5) {
         *current_keys_raw -= 4;
         g_block = true;
@@ -23,8 +24,22 @@ size_t HookedProcessInputs(byte* p1, void* p2)
         }
     }
 
+    if (g_cool_down > 0) {
+        g_cool_down--;
+        if (g_cool_down_enable) {
+            return fpProcessInputs(p1, p2);
+        }
+    }
+
     if (GetAsyncKeyState(combat_art_key) & 0x8000) {
         *current_keys_raw |= 5;
+        uint64_t* prev_keys_raw = reinterpret_cast<uint64_t*>(p1 + 0x18);
+        if ((*prev_keys_raw & 5) == 0) {
+            g_cool_down = 45;
+            g_cool_down_enable = false;
+        }
+    } else {
+        g_cool_down_enable = true;
     }
 
     return fpProcessInputs(p1, p2);
