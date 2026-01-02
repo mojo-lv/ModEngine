@@ -1,7 +1,5 @@
 #pragma once
 
-#include <windows.h>
-
 typedef struct {
     void *reserved1;
     WCHAR *path;

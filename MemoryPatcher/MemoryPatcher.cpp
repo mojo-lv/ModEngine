@@ -20,7 +20,7 @@ static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str) {
     return bytes;
 }
 
-static void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patchBytes)
+void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patchBytes)
 {
     if (patchBytes.empty()) {
         return;
@@ -38,9 +38,8 @@ static void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patch
 
 void PatchMemory()
 {
-    const DWORD size = 4096;
-    WCHAR section[size];
-    if (GetPrivateProfileSectionW(L"memory", section, size, L".\\mod_engine.ini")) {
+    WCHAR section[MAX_SECTION_SIZE];
+    if (GetPrivateProfileSectionW(L"memory", section, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
         for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
             std::wstring_view line(pCurrent);
             size_t equalsPos = line.find(L'=');

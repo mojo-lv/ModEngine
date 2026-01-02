@@ -6,16 +6,14 @@
 
 std::vector<HMODULE> g_LoadedDLLs;
 
-bool g_test = true;
-
 static void OnAttach()
 {
-    if (g_test) {
-        FILE *stream;
-        freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
-    }
-    PatchMemory();
+#if ENABLE_LOGGING
+    FILE *stream;
+    freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
+#endif
     MH_Initialize();
+    PatchMemory();
     LoadModFiles();
     SetComatArtKey();
     MH_EnableHook(MH_ALL_HOOKS);

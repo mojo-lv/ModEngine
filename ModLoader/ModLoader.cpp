@@ -1,12 +1,14 @@
 #include "pch.h"
 #include "ModLoader.h"
 #include "MinHook/MinHook.h"
+#include "MemoryPatcher/MemoryPatcher.h"
 #include <unordered_map>
 
-#define GET_SEKIRO_VA_SIZE_ADDR 0x14115ccc0
-#define GET_SEKIRO_PATH_ADDR 0x1401c76d0
-
-namespace fs = std::filesystem;
+#define OFFSET_HOOK_GET_SEKIRO_VA_SIZE 0x115CCC0
+#define OFFSET_HOOK_GET_SEKIRO_PATH 0x1C76D0
+#define OFFSET_DISABLE_SAVE_CHECK_SUM 0x1B3C5AF
+#define OFFSET_DISABLE_SAVE_CHECK_STEAMID 0xDFAB11
+#define OFFSET_DISABLE_SAVE_CHECK_SLOT_STEAMID 0xDFCC32
 
 static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
@@ -19,21 +21,8 @@ static std::unordered_map<std::wstring, size_t> va_size;
 
 static size_t g_cur_len;
 static std::wstring g_save_path;
-
-static bool ScanDllsDir(fs::path dllsDir)
-{
-    if (!fs::exists(dllsDir) || !fs::is_directory(dllsDir)) {
-        return false;
-    }
-
-    for (const auto& p : fs::directory_iterator(dllsDir)) {
-        if (!p.is_directory() && (p.path().filename().wstring().front() != L'_')) {
-            g_LoadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
-        }
-    }
-
-    return true;
-}
+static std::wstring g_cutscene_path;
+static const std::wstring g_cutscene_path_temp = L"./<cs>";
 
 static bool ScanModsDir(fs::path modsDir)
 {
@@ -76,6 +65,26 @@ static bool ScanModsDir(fs::path modsDir)
     return true;
 }
 
+static void ScanDllsDir(fs::path dllsDir)
+{
+    if (fs::exists(dllsDir) && fs::is_directory(dllsDir)) {
+        for (const auto& p : fs::directory_iterator(dllsDir)) {
+            if (!p.is_directory() && (p.path().filename().wstring().front() != L'_')) {
+                g_LoadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
+            }
+        }
+    }
+}
+
+static void DisableSaveFileCheck()
+{
+    std::vector<BYTE> bytes = {0x90, 0x90};
+    ApplyMemoryPatch(OFFSET_DISABLE_SAVE_CHECK_SUM, bytes);
+    bytes = {0xEB};
+    ApplyMemoryPatch(OFFSET_DISABLE_SAVE_CHECK_STEAMID, bytes);
+    ApplyMemoryPatch(OFFSET_DISABLE_SAVE_CHECK_SLOT_STEAMID, bytes);
+}
+
 size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
 {
     std::wstring key(arg1);
@@ -102,6 +111,12 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             *(path + 3) = index->second[0];
             *(path + 4) = index->second[1];
             *(path + 5) = L'>';
+        } else if ((len == 43) && !g_cutscene_path.empty()) {
+            // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
+            std::wstring_view path_view(path);
+            if (path_view.compare(28, 15, L"cutscenebnd.dcx") == 0) {
+                wcsncpy_s(path, len, g_cutscene_path_temp.c_str(), g_cutscene_path_temp.length());
+            }
         }
     }
 
@@ -121,6 +136,9 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
                 std::wstring new_path = it->second;
                 new_path.append(path_view.substr(g_cur_len + 5));
                 return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
+                    dwFlagsAndAttributes, hTemplateFile);
+            } else if ((path_view[g_cur_len + 2] == L'c') && (path_view[g_cur_len + 3] == L's')) {
+                return fpCreateFileW(g_cutscene_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                     dwFlagsAndAttributes, hTemplateFile);
             }
         } else if (!g_save_path.empty()) {
@@ -147,10 +165,11 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
 
 void LoadModFiles()
 {
+    DWORD_PTR baseAddress = (DWORD_PTR)GetModuleHandle(NULL);
     fs::path curPath = fs::current_path();
     g_cur_len = curPath.wstring().length();
 
-    wchar_t configPath[MAX_PATH];
+    WCHAR configPath[MAX_PATH];
     GetPrivateProfileStringW(L"files", L"dlls", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if (lstrlenW(configPath) > 0) {
         ScanDllsDir(curPath / configPath);
@@ -158,9 +177,8 @@ void LoadModFiles()
 
     GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_PATH), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
-
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
     }
@@ -168,15 +186,24 @@ void LoadModFiles()
     GetPrivateProfileStringW(L"files", L"save", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && fs::exists(curPath / configPath)) {
         g_save_path = (curPath / configPath).wstring();
+        DisableSaveFileCheck();
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
         MH_CreateHookApi(L"kernel32", "CopyFileW", &HookedCopyFileW, 
                         reinterpret_cast<LPVOID*>(&fpCopyFileW));
     }
 
-    const DWORD size = 2048;
-    WCHAR section[size];
-    if (GetPrivateProfileSectionW(L"VirtualAlloc", section, size, L".\\mod_engine.ini")) {
+    GetPrivateProfileStringW(L"files", L"cutscene", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
+    if ((lstrlenW(configPath) > 0) && fs::exists(curPath / configPath)) {
+        g_cutscene_path = (curPath / configPath).wstring();
+        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_PATH), &HookedGetSekiroPath, 
+                        reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
+        MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
+                        reinterpret_cast<LPVOID*>(&fpCreateFileW));
+    }
+
+    WCHAR section[MAX_SECTION_SIZE];
+    if (GetPrivateProfileSectionW(L"VirtualAlloc", section, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
         for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
             std::wstring_view line(pCurrent);
             size_t equalsPos = line.find(L'=');
@@ -190,7 +217,7 @@ void LoadModFiles()
         }
 
         if (!va_size.empty()) {
-            MH_CreateHook(reinterpret_cast<LPVOID>(GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
+            MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
                             reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
         }
     }
