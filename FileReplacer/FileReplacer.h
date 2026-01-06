@@ -32,4 +32,4 @@ typedef BOOL(WINAPI *t_CopyFileW)(
 
 extern std::vector<HMODULE> g_LoadedDLLs;
 
-void LoadModFiles();
+void ReplaceFiles();

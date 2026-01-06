@@ -17,7 +17,7 @@
 #include <cwctype>
 
 #define MAX_SECTION_SIZE 2048
-#define ENABLE_LOGGING 0
+#define ENABLE_LOGGING 1
 
 namespace fs = std::filesystem;
 

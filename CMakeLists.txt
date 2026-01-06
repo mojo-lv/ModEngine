@@ -21,9 +21,9 @@ set(SOURCES
     pch.cpp
     dllmain.cpp
     DLLWrapper/DInputWrapper.cpp
+    FileReplacer/FileReplacer.cpp
     MemoryPatcher/MemoryPatcher.cpp
-    ModLoader/ModLoader.cpp
-    SekiroCombatArt/SekiroCombatArt.cpp
+    MiscSettings/CombatArtKey.cpp
     DLLWrapper/exports.def
 )
 

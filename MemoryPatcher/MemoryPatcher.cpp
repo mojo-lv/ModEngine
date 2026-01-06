@@ -20,13 +20,13 @@ static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str) {
     return bytes;
 }
 
-void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patchBytes)
+static void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patchBytes)
 {
     if (patchBytes.empty()) {
         return;
     }
 
-    DWORD_PTR targetAddress = (DWORD_PTR)GetModuleHandle(NULL) + targetOffset;
+    uintptr_t targetAddress = (uintptr_t)GetModuleHandle(NULL) + targetOffset;
 
     DWORD oldProtect;
     if (VirtualProtect((LPVOID)targetAddress, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtect))
@@ -52,4 +52,13 @@ void PatchMemory()
             }
         }
     }
+}
+
+void DisableSaveFileCheck()
+{
+    std::vector<BYTE> bytes = {0x90, 0x90};
+    ApplyMemoryPatch(0x1B3C5AF, bytes);
+    bytes = {0xEB};
+    ApplyMemoryPatch(0xDFAB11, bytes);
+    ApplyMemoryPatch(0xDFCC32, bytes);
 }

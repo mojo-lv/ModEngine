@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "MinHook/MinHook.h"
+#include "FileReplacer/FileReplacer.h"
 #include "MemoryPatcher/MemoryPatcher.h"
-#include "ModLoader/ModLoader.h"
-#include "SekiroCombatArt/SekiroCombatArt.h"
+#include "MiscSettings/CombatArtKey.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
 
@@ -13,9 +13,9 @@ static void OnAttach()
     freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
 #endif
     MH_Initialize();
+    ReplaceFiles();
     PatchMemory();
-    LoadModFiles();
-    SetComatArtKey();
+    SetCombatArtKey();
     MH_EnableHook(MH_ALL_HOOKS);
 }
 

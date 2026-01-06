@@ -1,14 +1,11 @@
 #include "pch.h"
-#include "ModLoader.h"
+#include "FileReplacer.h"
 #include "MinHook/MinHook.h"
 #include "MemoryPatcher/MemoryPatcher.h"
 #include <unordered_map>
 
 #define OFFSET_HOOK_GET_SEKIRO_VA_SIZE 0x115CCC0
 #define OFFSET_HOOK_GET_SEKIRO_PATH 0x1C76D0
-#define OFFSET_DISABLE_SAVE_CHECK_SUM 0x1B3C5AF
-#define OFFSET_DISABLE_SAVE_CHECK_STEAMID 0xDFAB11
-#define OFFSET_DISABLE_SAVE_CHECK_SLOT_STEAMID 0xDFCC32
 
 static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
@@ -74,15 +71,6 @@ static void ScanDllsDir(fs::path dllsDir)
             }
         }
     }
-}
-
-static void DisableSaveFileCheck()
-{
-    std::vector<BYTE> bytes = {0x90, 0x90};
-    ApplyMemoryPatch(OFFSET_DISABLE_SAVE_CHECK_SUM, bytes);
-    bytes = {0xEB};
-    ApplyMemoryPatch(OFFSET_DISABLE_SAVE_CHECK_STEAMID, bytes);
-    ApplyMemoryPatch(OFFSET_DISABLE_SAVE_CHECK_SLOT_STEAMID, bytes);
 }
 
 size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
@@ -163,9 +151,9 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
 
-void LoadModFiles()
+void ReplaceFiles()
 {
-    DWORD_PTR baseAddress = (DWORD_PTR)GetModuleHandle(NULL);
+    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
     fs::path curPath = fs::current_path();
     g_cur_len = curPath.wstring().length();
 
@@ -216,9 +204,9 @@ void LoadModFiles()
             }
         }
 
-        if (!va_size.empty()) {
-            MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
-                            reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
-        }
+        va_size.try_emplace(L"MO", 0x8400000);
+
+        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
+                        reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
     }
 }

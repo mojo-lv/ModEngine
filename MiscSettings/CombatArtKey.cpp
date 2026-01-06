@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "SekiroCombatArt.h"
+#include "CombatArtKey.h"
 #include "MinHook/MinHook.h"
 
 #define PROCESS_INPUTS 0x140B2C190
@@ -10,7 +10,7 @@ static int g_cool_down = 0;
 static bool g_cool_down_enable = false;
 static bool g_block = false;
 
-size_t HookedProcessInputs(byte* p1, void* p2)
+size_t HookedProcessInputs(uintptr_t p1, void* p2)
 {
     uint64_t* current_keys_raw = reinterpret_cast<uint64_t*>(p1 + 0x10);
     if ((*current_keys_raw & 5) == 5) {
@@ -45,7 +45,7 @@ size_t HookedProcessInputs(byte* p1, void* p2)
     return fpProcessInputs(p1, p2);
 }
 
-void SetComatArtKey()
+void SetCombatArtKey()
 {
     UINT key = GetPrivateProfileIntW(L"misc", L"combat_art_key", 0, L".\\mod_engine.ini");
     if (key != 0) {
