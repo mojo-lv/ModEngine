@@ -48,7 +48,7 @@ static bool ScanModsDir(fs::path modsDir)
     for (const auto& entry : entries) {
         swprintf(indexBuffer, _countof(indexBuffer), L"%02x", (index++) & 0xFF);
         std::wstring indexStr(indexBuffer);
-        index_to_mod.emplace(indexStr, entry.path().wstring());
+        index_to_mod.try_emplace(indexStr, entry.path().wstring());
         
         for (const auto& p : fs::recursive_directory_iterator(entry.path())) {
             if (!p.is_directory()) {
@@ -165,6 +165,9 @@ void ReplaceFiles()
 
     GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
+        va_size.try_emplace(L"MO", 0x8400000);
+        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
+                        reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
         MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_PATH), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
@@ -200,13 +203,8 @@ void ReplaceFiles()
                 std::wstring value(line.substr(equalsPos + 1));
 
                 size_t size = std::stoull(value, nullptr, 0);
-                va_size.try_emplace(key, size);
+                va_size.insert_or_assign(key, size);
             }
         }
-
-        va_size.try_emplace(L"MO", 0x8400000);
-
-        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
-                        reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
     }
 }
