@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "FileReplacer.h"
+#include "FilesMod.h"
 #include "MinHook/MinHook.h"
-#include "MemoryPatcher/MemoryPatcher.h"
+#include "MemoryPatch/MemoryPatch.h"
 #include <unordered_map>
 
 #define OFFSET_HOOK_GET_SEKIRO_VA_SIZE 0x115CCC0
@@ -151,7 +151,7 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
 
-void ReplaceFiles()
+void ApplyFilesMod()
 {
     uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
     fs::path curPath = fs::current_path();

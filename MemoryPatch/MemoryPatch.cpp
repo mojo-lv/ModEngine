@@ -1,7 +1,8 @@
 #include "pch.h"
-#include "MemoryPatcher.h"
+#include "MemoryPatch.h"
 
-static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str) {
+static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str)
+{
     std::vector<BYTE> bytes;
     size_t start = 0;
     while (start < str.length()) {
@@ -20,24 +21,21 @@ static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str) {
     return bytes;
 }
 
-static void ApplyMemoryPatch(size_t targetOffset, const std::vector<BYTE>& patchBytes)
+static void PatchMemory(uintptr_t targetAddress, const std::vector<BYTE>& patchBytes)
 {
-    if (patchBytes.empty()) {
-        return;
-    }
-
-    uintptr_t targetAddress = (uintptr_t)GetModuleHandle(NULL) + targetOffset;
-
-    DWORD oldProtect;
-    if (VirtualProtect((LPVOID)targetAddress, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtect))
-    {
-        memcpy((LPVOID)targetAddress, patchBytes.data(), patchBytes.size());
-        VirtualProtect((LPVOID)targetAddress, patchBytes.size(), oldProtect, &oldProtect); // Restore original protection
+    if (!patchBytes.empty()) {
+        DWORD oldProtect;
+        if (VirtualProtect((LPVOID)targetAddress, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtect)) {
+            memcpy((LPVOID)targetAddress, patchBytes.data(), patchBytes.size());
+            VirtualProtect((LPVOID)targetAddress, patchBytes.size(), oldProtect, &oldProtect); // Restore original protection
+        }
     }
 }
 
-void PatchMemory()
+void ApplyMemoryPatch()
 {
+    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
+
     WCHAR section[MAX_SECTION_SIZE];
     if (GetPrivateProfileSectionW(L"memory", section, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
         for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
@@ -48,7 +46,7 @@ void PatchMemory()
                 std::wstring_view value_view = line.substr(equalsPos + 1);
 
                 size_t offset = std::stoull(key, nullptr, 16);
-                ApplyMemoryPatch(offset, HexSpaceStrToBytes(value_view));
+                PatchMemory(baseAddress + offset, HexSpaceStrToBytes(value_view));
             }
         }
     }
@@ -56,9 +54,10 @@ void PatchMemory()
 
 void DisableSaveFileCheck()
 {
+    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
     std::vector<BYTE> bytes = {0x90, 0x90};
-    ApplyMemoryPatch(0x1B3C5AF, bytes);
+    PatchMemory(baseAddress + 0x1B3C5AF, bytes);
     bytes = {0xEB};
-    ApplyMemoryPatch(0xDFAB11, bytes);
-    ApplyMemoryPatch(0xDFCC32, bytes);
+    PatchMemory(baseAddress + 0xDFAB11, bytes);
+    PatchMemory(baseAddress + 0xDFCC32, bytes);
 }

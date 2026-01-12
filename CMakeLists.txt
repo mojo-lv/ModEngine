@@ -18,13 +18,13 @@ endif()
 
 # 定义源文件列表
 set(SOURCES
-    pch.cpp
-    dllmain.cpp
-    DLLWrapper/DInputWrapper.cpp
-    FileReplacer/FileReplacer.cpp
-    MemoryPatcher/MemoryPatcher.cpp
+    DllExports/exports.def
+    DllExports/exported.cpp
+    FilesMod/FilesMod.cpp
+    MemoryPatch/MemoryPatch.cpp
     MiscSettings/CombatArtKey.cpp
-    DLLWrapper/exports.def
+    dllmain.cpp
+    pch.cpp
 )
 
 # 添加动态链接库目标

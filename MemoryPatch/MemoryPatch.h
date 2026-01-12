@@ -1,4 +1,4 @@
 #pragma once
 
-void PatchMemory();
+void ApplyMemoryPatch();
 void DisableSaveFileCheck();
