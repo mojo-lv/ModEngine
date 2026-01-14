@@ -30,6 +30,4 @@ typedef BOOL(WINAPI *t_CopyFileW)(
     BOOL    bFailIfExists
 );
 
-extern std::vector<HMODULE> g_LoadedDLLs;
-
 void ApplyFilesMod();

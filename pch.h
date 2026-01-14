@@ -15,9 +15,9 @@
 #include <filesystem>  // C++17
 #include <algorithm>
 #include <cwctype>
+#include <unordered_map>
 
 #define MAX_SECTION_SIZE 2048
-#define ENABLE_LOGGING 0
 
 namespace fs = std::filesystem;
 

@@ -1,4 +1,5 @@
 #pragma once
 
 void ApplyMemoryPatch();
-void DisableSaveFileCheck();
+void PatchSaveFileCheck();
+void PatchDebugMenu(uintptr_t hookAddress);

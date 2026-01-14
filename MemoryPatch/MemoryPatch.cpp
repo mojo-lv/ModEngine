@@ -52,7 +52,7 @@ void ApplyMemoryPatch()
     }
 }
 
-void DisableSaveFileCheck()
+void PatchSaveFileCheck()
 {
     uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
     std::vector<BYTE> bytes = {0x90, 0x90};
@@ -61,3 +61,25 @@ void DisableSaveFileCheck()
     PatchMemory(baseAddress + 0xDFAB11, bytes);
     PatchMemory(baseAddress + 0xDFCC32, bytes);
 }
+
+void PatchDebugMenu(uintptr_t hookAddress)
+{
+    std::vector<BYTE> callBytes = {0xE8};
+    PatchMemory(hookAddress, callBytes);
+
+    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
+
+    std::vector<BYTE> retBytes = {0xC3};
+    PatchMemory(baseAddress + 0x2650400, retBytes);
+    PatchMemory(baseAddress + 0x261E660, retBytes);
+    PatchMemory(baseAddress + 0x2619690, retBytes);
+
+    std::vector<BYTE> xorAlBytes = {0x30, 0xC0};
+    PatchMemory(baseAddress + 0xA7667E, xorAlBytes);
+
+    std::vector<BYTE> movAl01Bytes = {0xB0, 0x01};
+    PatchMemory(baseAddress + 0x9791C0, movAl01Bytes);
+    PatchMemory(baseAddress + 0x9791D0, movAl01Bytes);
+    PatchMemory(baseAddress + 0x9791E0, movAl01Bytes);
+    PatchMemory(baseAddress + 0x1187590, movAl01Bytes);
+};

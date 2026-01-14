@@ -1,8 +1,7 @@
 #include "pch.h"
-#include "FilesMod.h"
-#include "MinHook/MinHook.h"
+#include "ThirdParty/minhook/include/MinHook.h"
 #include "MemoryPatch/MemoryPatch.h"
-#include <unordered_map>
+#include "FilesMod.h"
 
 #define OFFSET_HOOK_GET_SEKIRO_VA_SIZE 0x115CCC0
 #define OFFSET_HOOK_GET_SEKIRO_PATH 0x1C76D0
@@ -20,6 +19,8 @@ static size_t g_cur_len;
 static std::wstring g_save_path;
 static std::wstring g_cutscene_path;
 static const std::wstring g_cutscene_path_temp = L"./<cs>";
+
+extern std::vector<HMODULE> g_LoadedDLLs;
 
 static bool ScanModsDir(fs::path modsDir)
 {
@@ -165,7 +166,7 @@ void ApplyFilesMod()
 
     GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
-        va_size.try_emplace(L"MO", 0x8400000);
+        //va_size.try_emplace(L"MO", 0x8400000);
         MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
         MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_PATH), &HookedGetSekiroPath, 
@@ -177,7 +178,7 @@ void ApplyFilesMod()
     GetPrivateProfileStringW(L"files", L"save", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && fs::exists(curPath / configPath)) {
         g_save_path = (curPath / configPath).wstring();
-        DisableSaveFileCheck();
+        PatchSaveFileCheck();
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
         MH_CreateHookApi(L"kernel32", "CopyFileW", &HookedCopyFileW, 

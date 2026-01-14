@@ -8,8 +8,6 @@ typedef HRESULT(WINAPI *t_DirectInput8Create)(
     LPVOID *ppvOut,
     LPUNKNOWN punkOuter
 );
-
-// Function pointer for the original, real System Function
 static t_DirectInput8Create fpOriginal = nullptr;
 
 static std::once_flag g_init_flag;

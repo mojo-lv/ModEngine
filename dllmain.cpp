@@ -1,21 +1,30 @@
 #include "pch.h"
-#include "MinHook/MinHook.h"
+#include "ThirdParty/minhook/include/MinHook.h"
 #include "FilesMod/FilesMod.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "MiscSettings/CombatArtKey.h"
+#include "DebugMenu/DebugMenu.h"
+#include "DebugMenu/Graphics.h"
+#include "D3D11Hook/D3D11Hook.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
 
 static void OnAttach()
 {
-#if ENABLE_LOGGING
     FILE *stream;
     freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
-#endif
+
     MH_Initialize();
+
     ApplyFilesMod();
     ApplyMemoryPatch();
     SetCombatArtKey();
+
+    if (GetPrivateProfileIntW(L"debug_menu", L"enable", 0, L".\\mod_engine.ini") != 0) {
+        EnableDebugMenu();
+        CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
+    }
+
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
@@ -30,6 +39,7 @@ static void OnDetach()
 
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
+    ShutdownImGui();
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)

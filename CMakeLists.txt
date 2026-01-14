@@ -20,11 +20,20 @@ endif()
 set(SOURCES
     DllExports/exports.def
     DllExports/exported.cpp
+    pch.cpp
+    dllmain.cpp
+    D3D11Hook/D3D11Hook.cpp
+    DebugMenu/DebugMenu.cpp
+    DebugMenu/Graphics.cpp
     FilesMod/FilesMod.cpp
     MemoryPatch/MemoryPatch.cpp
     MiscSettings/CombatArtKey.cpp
-    dllmain.cpp
-    pch.cpp
+    ThirdParty/imgui/imgui.cpp
+    ThirdParty/imgui/imgui_draw.cpp
+    ThirdParty/imgui/imgui_tables.cpp
+    ThirdParty/imgui/imgui_widgets.cpp
+    ThirdParty/imgui/imgui_impl_dx11.cpp
+    ThirdParty/imgui/imgui_impl_win32.cpp
 )
 
 # 添加动态链接库目标
@@ -38,14 +47,35 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-# 根据平台架构链接不同的 MinHook 库
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(STATUS "Linking against MinHook x64")
-    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/MinHook/MinHook.x64.lib")
-else()
-    message(STATUS "Linking against MinHook x86")
-    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/MinHook/MinHook.x86.lib")
+# 为 MSVC 添加优化标志
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        # 最大速度优化
+        $<$<CONFIG:Release>:/O2>
+        # 函数级别链接
+        $<$<CONFIG:Release>:/Gy>
+        # 全局数据优化
+        $<$<CONFIG:Release>:/Gw>
+        # 启用全程序编译优化（链接时代码生成）
+        $<$<CONFIG:Release>:/GL>
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE
+        # 减少未用代码和数据
+        $<$<CONFIG:Release>:/OPT:REF>
+        # 折叠相同代码
+        $<$<CONFIG:Release>:/OPT:ICF>
+        # 禁用增量链接
+        $<$<CONFIG:Release>:/INCREMENTAL:NO>
+        # 启用全程序优化（链接时代码生成）
+        $<$<CONFIG:Release>:/LTCG>
+    )
 endif()
+
+# 从源码构建 minhook
+add_subdirectory(ThirdParty/minhook)
+
+# 链接到编译后的 minhook 库以及其他系统库
+target_link_libraries(${PROJECT_NAME} PRIVATE minhook d3d11)
 
 # 打印一些信息以供调试
 message(STATUS "Project Name: ${PROJECT_NAME}")
