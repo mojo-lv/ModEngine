@@ -2,7 +2,8 @@
 
 struct FontConfig {
     std::string path;
-    float size = 16.0f;
+    float size = 18.0f;
+    UINT color = 0xFFFFFFFF;
 };
 
 struct MenuEntry {

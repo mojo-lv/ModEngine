@@ -3,29 +3,49 @@
 #include "Graphics.h"
 
 #define LOG_KEY 'P'
+const std::string diamond_black = "\xE2\x97\x86";
+const std::string diamond_white = "\xE2\x97\x87";
 
 static bool last_state = false;
 static GraphicsContext gCtx;
 
 static void DrawDebugMenu()
 {
-    ImGui::SetNextWindowSize(ImVec2(gCtx.width, gCtx.height));
+    auto* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(vp->Pos);
+    ImGui::SetNextWindowSize(vp->Size);
     ImGui::Begin("DebugMenu", nullptr, gCtx.sWindowFlags);
 
     bool state = (GetAsyncKeyState(LOG_KEY) & 0x8000) != 0;
     bool log = state && !last_state;
     last_state = state;
 
+    bool highlightNext = false;
+    bool found = false;
     for (auto& entry : g_menuList) {
         if (log) {
-            std::cout << "[DebugMenu] " << entry.text.c_str() << std::endl;
+            std::cout << "[DebugMenu] " << entry.text << std::endl;
         }
 
-        ImGui::GetWindowDrawList()->AddText(
-            gCtx.pMenuFont, g_fontConfig.size,
-            ImVec2(entry.fX, entry.fY),
-            ImColor(255, 255, 255, 255),
-            entry.text.c_str(), 0, 0.0f, 0);
+        if (highlightNext && !found) {
+            ImGui::GetWindowDrawList()->AddText(
+                gCtx.pMenuFont, g_fontConfig.size,
+                ImVec2(entry.fX, entry.fY),
+                ImColor(g_fontConfig.color),
+                entry.text.c_str(), 0, 0.0f, 0);
+            found = true;
+            highlightNext = false;
+        } else {
+            ImGui::GetWindowDrawList()->AddText(
+                gCtx.pMenuFont, g_fontConfig.size,
+                ImVec2(entry.fX, entry.fY),
+                ImColor(IM_COL32_WHITE),
+                entry.text.c_str(), 0, 0.0f, 0);
+        }
+
+        if (!found && (entry.text == diamond_black || entry.text == diamond_white)) {
+            highlightNext = true;
+        }
     }
     g_menuList.clear();
 
@@ -86,13 +106,17 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
         }
     }
 
-    gCtx.sWindowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar 
-                        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-
-    RECT clientRect;
-    GetClientRect(hWindow, &clientRect);
-    gCtx.width = static_cast<float>(clientRect.right - clientRect.left);
-    gCtx.height = static_cast<float>(clientRect.bottom - clientRect.top);
+    gCtx.sWindowFlags = ImGuiWindowFlags_NoTitleBar
+                        | ImGuiWindowFlags_NoResize
+                        | ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_NoCollapse
+                        | ImGuiWindowFlags_NoScrollbar
+                        | ImGuiWindowFlags_NoScrollWithMouse
+                        | ImGuiWindowFlags_NoBackground
+                        | ImGuiWindowFlags_NoSavedSettings
+                        | ImGuiWindowFlags_NoInputs
+                        | ImGuiWindowFlags_NoFocusOnAppearing
+                        | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
     gCtx.pSwapChain = pSwapChain;
 }

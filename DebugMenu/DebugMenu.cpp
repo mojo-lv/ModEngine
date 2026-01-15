@@ -54,6 +54,16 @@ void EnableDebugMenu()
         g_fontConfig.size = (float)fontSize;
     }
 
+    UINT rgb = GetPrivateProfileIntW(L"debug_menu", L"color", 0, L".\\mod_engine.ini");
+    if (rgb != 0) {
+        UINT r = (rgb >> 16) & 0xFF;
+        UINT g = (rgb >> 8) & 0xFF;
+        UINT b = rgb & 0xFF;
+        UINT a = 0xFF;
+        // 0xAABBGGRR
+        g_fontConfig.color = (a << 24) | (b << 16) | (g << 8) | r;
+    }
+
     uintptr_t hookAddress = (uintptr_t)GetModuleHandle(NULL) + OFFSET_HOOK_DEBUG_MENU;
     if (MH_CreateHook(reinterpret_cast<LPVOID>(hookAddress), &HookedDebugMenu, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(hookAddress));

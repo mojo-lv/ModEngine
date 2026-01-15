@@ -13,8 +13,6 @@ struct GraphicsContext {
     ID3D11RenderTargetView* pRenderTargetView = nullptr;
     ImFont*                 pMenuFont         = nullptr;
     ImGuiWindowFlags        sWindowFlags      = 0;
-    float                   width             = 0.0f;
-    float                   height            = 0.0f;
 };
 
 void RenderImGui(IDXGISwapChain* pSwapChain);
