@@ -3,7 +3,7 @@
 #include "MemoryPatch/MemoryPatch.h"
 #include "DebugMenu.h"
 
-#define OFFSET_HOOK_DEBUG_MENU 0x262d186
+constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
 
 std::vector<MenuEntry> g_menuList;
 FontConfig g_fontConfig;
@@ -64,9 +64,8 @@ void EnableDebugMenu()
         g_fontConfig.color = (a << 24) | (b << 16) | (g << 8) | r;
     }
 
-    uintptr_t hookAddress = (uintptr_t)GetModuleHandle(NULL) + OFFSET_HOOK_DEBUG_MENU;
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(hookAddress), &HookedDebugMenu, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(hookAddress));
-        PatchDebugMenu(hookAddress);
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_MENU_ADDR), &HookedDebugMenu, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_MENU_ADDR));
+        PatchDebugMenu(HOOK_DEBUG_MENU_ADDR);
     }
 }

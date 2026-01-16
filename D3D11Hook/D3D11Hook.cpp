@@ -15,7 +15,7 @@ HRESULT APIENTRY HookedD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterva
 DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
 {
     // Wait for dxgi.dll to be loaded
-    while (!GetModuleHandleA("dxgi.dll"))
+    while (!GetModuleHandleW(L"dxgi.dll"))
         Sleep(1000);
 
     // Create a dummy device and swapchain to get the vtable address

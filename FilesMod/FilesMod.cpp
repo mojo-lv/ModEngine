@@ -3,8 +3,8 @@
 #include "MemoryPatch/MemoryPatch.h"
 #include "FilesMod.h"
 
-#define OFFSET_HOOK_GET_SEKIRO_VA_SIZE 0x115CCC0
-#define OFFSET_HOOK_GET_SEKIRO_PATH 0x1C76D0
+constexpr uintptr_t HOOK_GET_SEKIRO_VA_SIZE_ADDR = 0x14115CCC0;
+constexpr uintptr_t HOOK_GET_SEKIRO_PATH_ADDR = 0x1401C76D0;
 
 static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
@@ -154,7 +154,6 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
 
 void ApplyFilesMod()
 {
-    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
     fs::path curPath = fs::current_path();
     g_cur_len = curPath.wstring().length();
 
@@ -167,9 +166,9 @@ void ApplyFilesMod()
     GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
         //va_size.try_emplace(L"MO", 0x8400000);
-        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_VA_SIZE), &HookedGetSekiroVASize, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
-        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_PATH), &HookedGetSekiroPath, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
@@ -188,7 +187,7 @@ void ApplyFilesMod()
     GetPrivateProfileStringW(L"files", L"cutscene", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
     if ((lstrlenW(configPath) > 0) && fs::exists(curPath / configPath)) {
         g_cutscene_path = (curPath / configPath).wstring();
-        MH_CreateHook(reinterpret_cast<LPVOID>(baseAddress + OFFSET_HOOK_GET_SEKIRO_PATH), &HookedGetSekiroPath, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));

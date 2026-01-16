@@ -34,7 +34,7 @@ static void PatchMemory(uintptr_t targetAddress, const std::vector<BYTE>& patchB
 
 void ApplyMemoryPatch()
 {
-    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
+    uintptr_t baseAddress = (uintptr_t)GetModuleHandleW(nullptr);
 
     WCHAR section[MAX_SECTION_SIZE];
     if (GetPrivateProfileSectionW(L"memory", section, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
@@ -54,12 +54,11 @@ void ApplyMemoryPatch()
 
 void PatchSaveFileCheck()
 {
-    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
     std::vector<BYTE> bytes = {0x90, 0x90};
-    PatchMemory(baseAddress + 0x1B3C5AF, bytes);
+    PatchMemory(0x141B3C5AF, bytes);
     bytes = {0xEB};
-    PatchMemory(baseAddress + 0xDFAB11, bytes);
-    PatchMemory(baseAddress + 0xDFCC32, bytes);
+    PatchMemory(0x140DFAB11, bytes);
+    PatchMemory(0x140DFCC32, bytes);
 }
 
 void PatchDebugMenu(uintptr_t hookAddress)
@@ -67,19 +66,17 @@ void PatchDebugMenu(uintptr_t hookAddress)
     std::vector<BYTE> callBytes = {0xE8};
     PatchMemory(hookAddress, callBytes);
 
-    uintptr_t baseAddress = (uintptr_t)GetModuleHandle(NULL);
-
     std::vector<BYTE> retBytes = {0xC3};
-    PatchMemory(baseAddress + 0x2650400, retBytes);
-    PatchMemory(baseAddress + 0x261E660, retBytes);
-    PatchMemory(baseAddress + 0x2619690, retBytes);
+    PatchMemory(0x142650400, retBytes);
+    PatchMemory(0x14261E660, retBytes);
+    PatchMemory(0x142619690, retBytes);
 
     std::vector<BYTE> xorAlBytes = {0x30, 0xC0};
-    PatchMemory(baseAddress + 0xA7667E, xorAlBytes);
+    PatchMemory(0x140A7667E, xorAlBytes);
 
     std::vector<BYTE> movAl01Bytes = {0xB0, 0x01};
-    PatchMemory(baseAddress + 0x9791C0, movAl01Bytes);
-    PatchMemory(baseAddress + 0x9791D0, movAl01Bytes);
-    PatchMemory(baseAddress + 0x9791E0, movAl01Bytes);
-    PatchMemory(baseAddress + 0x1187590, movAl01Bytes);
+    PatchMemory(0x1409791C0, movAl01Bytes);
+    PatchMemory(0x1409791D0, movAl01Bytes);
+    PatchMemory(0x1409791E0, movAl01Bytes);
+    PatchMemory(0x141187590, movAl01Bytes);
 };

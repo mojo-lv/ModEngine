@@ -28,5 +28,5 @@ jobs:
       - name: Upload artifact # 步骤名称：上传构建产物
         uses: actions/upload-artifact@v4 # 使用 actions/upload-artifact@v4 动作来上传文件
         with: # 动作参数
-          name: ModEngine-DLL # 产物的名称
-          path: ${{github.workspace}}/build/Release/ModEngine.dll # 要上传的文件路径
+          name: ModEngine # 产物的名称
+          path: ${{github.workspace}}/build/Release/dinput8.dll # 要上传的文件路径

@@ -2,7 +2,7 @@
 #include "ThirdParty/minhook/include/MinHook.h"
 #include "CombatArtKey.h"
 
-#define PROCESS_INPUTS 0x140B2C190
+constexpr uintptr_t HOOK_PROCESS_INPUTS_ADDR = 0x140B2C190;
 
 typedef size_t(*t_ProcessInputs)(uintptr_t, void*);
 static t_ProcessInputs fpProcessInputs = nullptr;
@@ -60,7 +60,7 @@ void SetCombatArtKey()
     UINT key = GetPrivateProfileIntW(L"misc", L"combat_art_key", 0, L".\\mod_engine.ini");
     if (key != 0) {
         combat_art_key = key;
-        MH_CreateHook(reinterpret_cast<LPVOID>(PROCESS_INPUTS), &HookedProcessInputs, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_PROCESS_INPUTS_ADDR), &HookedProcessInputs, 
                         reinterpret_cast<LPVOID*>(&fpProcessInputs));
     }
 }

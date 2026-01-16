@@ -126,14 +126,14 @@ void RenderImGui(IDXGISwapChain* pSwapChain)
     if (pSwapChain != gCtx.pSwapChain) {
         InitImGui(pSwapChain);
     } else if (!g_menuList.empty()) {
-        gCtx.pContext->OMSetRenderTargets(1, &gCtx.pRenderTargetView, nullptr);
-        ImGui_ImplWin32_NewFrame();
         ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
         DrawDebugMenu();
 
         ImGui::Render();
+        gCtx.pContext->OMSetRenderTargets(1, &gCtx.pRenderTargetView, nullptr);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
 }
