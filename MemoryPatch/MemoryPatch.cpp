@@ -71,9 +71,6 @@ void PatchDebugMenu(uintptr_t hookAddress)
     PatchMemory(0x14261E660, retBytes);
     PatchMemory(0x142619690, retBytes);
 
-    std::vector<BYTE> xorAlBytes = {0x30, 0xC0};
-    PatchMemory(0x140A7667E, xorAlBytes);
-
     std::vector<BYTE> movAl01Bytes = {0xB0, 0x01};
     PatchMemory(0x1409791C0, movAl01Bytes);
     PatchMemory(0x1409791D0, movAl01Bytes);
