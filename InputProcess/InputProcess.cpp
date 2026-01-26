@@ -10,7 +10,6 @@ static std::map<std::pair<size_t, size_t>, size_t> keyRemap;
 typedef size_t(*t_KeyMapping)(void*, size_t, size_t, size_t);
 static t_KeyMapping fpKeyMapping = nullptr;
 
-extern CRITICAL_SECTION cs;
 extern bool g_log_key_remap;
 
 size_t HookedKeyMapping(void* arg1, size_t arg2, size_t arg3, size_t arg4)
@@ -18,18 +17,15 @@ size_t HookedKeyMapping(void* arg1, size_t arg2, size_t arg3, size_t arg4)
     size_t key = arg3;
     auto it = keyRemap.find({arg2, arg3});
     if(it != keyRemap.end()) {
-        if (g_log_key_remap) {
-            std::cout << "[KeyMapping] " << std::hex << arg2 << " " << arg3 << " remap to " << it->second << std::endl;
-        }
         key = it->second;
+        if (g_log_key_remap) {
+            std::cout << "[KeyMapping] " << std::hex << arg2 << " " << arg3 << " remap to " << key << std::endl;
+        }
     } else if (g_log_key_remap) {
         std::cout << "[KeyMapping] " << std::hex << arg2 << " " << arg3 << std::endl;
     }
 
-    EnterCriticalSection(&cs);
-    size_t result = fpKeyMapping(arg1, arg2, key, arg4);
-    LeaveCriticalSection(&cs);
-    return result;
+    return fpKeyMapping(arg1, arg2, key, arg4);
 }
 
 void EnableInputProcess()
