@@ -1,5 +1,5 @@
 # CMake 最低版本要求
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 # 项目名称和版本
 project(dinput8 VERSION 1.0 LANGUAGES C CXX)
@@ -13,7 +13,7 @@ if(MSVC)
     # 设置 MSVC 运行时库为动态链接
     # 对于 Release 配置，使用 /MD (MultiThreadedDLL)
     # 对于 Debug 配置，使用 /MDd (MultiThreadedDebugDLL)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "$<$<CONFIG:Debug>:MultiThreadedDebugDLL>$<$<NOT:$<CONFIG:Debug>>:MultiThreadedDLL>")
 endif()
 
 # 定义源文件列表
