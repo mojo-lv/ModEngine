@@ -6,8 +6,11 @@
 const std::string diamond_black = "\xE2\x97\x86";
 const std::string diamond_white = "\xE2\x97\x87";
 
-static bool last_state = false;
 static GraphicsContext gCtx;
+
+static bool log_triggered = false;
+static bool last_state = false;
+extern bool g_log_debug_menu;
 
 static void DrawDebugMenu()
 {
@@ -16,14 +19,16 @@ static void DrawDebugMenu()
     ImGui::SetNextWindowSize(vp->Size);
     ImGui::Begin("DebugMenu", nullptr, gCtx.sWindowFlags);
 
-    bool state = (GetAsyncKeyState(LOG_KEY) & 0x8000) != 0;
-    bool log = state && !last_state;
-    last_state = state;
+    if (g_log_debug_menu) {
+        bool state = (GetAsyncKeyState(LOG_KEY) & 0x8000) != 0;
+        log_triggered = state && !last_state;
+        last_state = state;
+    }
 
     bool highlightNext = false;
     bool found = false;
     for (auto& entry : g_menuList) {
-        if (log) {
+        if (log_triggered) {
             std::cout << "[DebugMenu] " << entry.text << std::endl;
         }
 

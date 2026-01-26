@@ -1,24 +1,36 @@
 #include "pch.h"
 #include "ThirdParty/minhook/include/MinHook.h"
 #include "FilesMod/FilesMod.h"
+#include "InputProcess/InputProcess.h"
 #include "MemoryPatch/MemoryPatch.h"
-#include "MiscSettings/CombatArtKey.h"
 #include "DebugMenu/DebugMenu.h"
 #include "DebugMenu/Graphics.h"
 #include "D3D11Hook/D3D11Hook.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
+bool g_log_debug_menu = false;
+bool g_log_key_remap = false;
 
 static void OnAttach()
 {
-    FILE *stream;
-    freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
+    if (GetPrivateProfileIntW(L"logs", L"debug_menu", 0, L".\\mod_engine.ini") != 0) {
+        g_log_debug_menu = true;
+    }
+
+    if (GetPrivateProfileIntW(L"logs", L"key_remap", 0, L".\\mod_engine.ini") != 0) {
+        g_log_key_remap= true;
+    }
+
+    if (g_log_debug_menu || g_log_key_remap) {
+        FILE *stream;
+        freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
+    }
 
     MH_Initialize();
 
     ApplyFilesMod();
+    EnableInputProcess();
     ApplyMemoryPatch();
-    SetCombatArtKey();
 
     if (GetPrivateProfileIntW(L"debug_menu", L"enable", 0, L".\\mod_engine.ini") != 0) {
         EnableDebugMenu();

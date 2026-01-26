@@ -26,8 +26,8 @@ set(SOURCES
     DebugMenu/DebugMenu.cpp
     DebugMenu/Graphics.cpp
     FilesMod/FilesMod.cpp
+    InputProcess/InputProcess.cpp
     MemoryPatch/MemoryPatch.cpp
-    MiscSettings/CombatArtKey.cpp
     ThirdParty/imgui/imgui.cpp
     ThirdParty/imgui/imgui_draw.cpp
     ThirdParty/imgui/imgui_tables.cpp
