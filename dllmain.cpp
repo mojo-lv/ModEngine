@@ -10,6 +10,7 @@
 std::vector<HMODULE> g_LoadedDLLs;
 bool g_log_debug_menu = false;
 bool g_log_key_remap = false;
+CRITICAL_SECTION cs;
 
 static void OnAttach()
 {
@@ -26,6 +27,7 @@ static void OnAttach()
         freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
     }
 
+    InitializeCriticalSection(&cs);
     MH_Initialize();
 
     ApplyFilesMod();
@@ -52,6 +54,7 @@ static void OnDetach()
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
     ShutdownImGui();
+    DeleteCriticalSection(&cs);
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)

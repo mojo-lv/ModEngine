@@ -47,6 +47,30 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+# 为 MSVC 添加优化标志
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        # 最大速度优化
+        $<$<CONFIG:Release>:/O2>
+        # 函数级别链接
+        $<$<CONFIG:Release>:/Gy>
+        # 全局数据优化
+        $<$<CONFIG:Release>:/Gw>
+        # 启用全程序编译优化（链接时代码生成）
+        $<$<CONFIG:Release>:/GL>
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE
+        # 减少未用代码和数据
+        $<$<CONFIG:Release>:/OPT:REF>
+        # 折叠相同代码
+        $<$<CONFIG:Release>:/OPT:ICF>
+        # 禁用增量链接
+        $<$<CONFIG:Release>:/INCREMENTAL:NO>
+        # 启用全程序优化（链接时代码生成）
+        $<$<CONFIG:Release>:/LTCG>
+    )
+endif()
+
 # 从源码构建 minhook
 add_subdirectory(ThirdParty/minhook)
 
