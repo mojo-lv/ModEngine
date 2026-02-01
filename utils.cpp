@@ -27,8 +27,8 @@ void ReadAndPrintBytes(uintptr_t address, size_t size) {
 }
 
 void PrintStackTrace() {
-    void* stack[16] = {};
-    USHORT frames = RtlCaptureStackBackTrace(0, 16, stack, NULL);
+    void* stack[8] = {};
+    USHORT frames = RtlCaptureStackBackTrace(0, 8, stack, NULL);
     printf("Stack:\n");
     for (USHORT i = 0; i < frames; ++i) {
         printf("\tFrame[%d]: %p, %ls\n", i, stack[i], GetModuleNameFromAddress(stack[i]).c_str());
