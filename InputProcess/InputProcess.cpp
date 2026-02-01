@@ -2,23 +2,16 @@
 #include "ThirdParty/minHook/include/MinHook.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "InputProcess.h"
+#include <map>
 
 constexpr uintptr_t HOOK_KEY_MAPPING_ADDR = 0x142600d50;
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 
-struct KeyHash {
-    size_t operator()(const std::pair<uint32_t, uint32_t>& k) const {
-        size_t h1 = std::hash<uint32_t>()(k.first);
-        size_t h2 = std::hash<uint32_t>()(k.second);
-        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-    }
-};
-
-static std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, KeyHash> keyRemap;
+static std::map<std::pair<uint32_t, uint32_t>, uint32_t> keyRemap;
 
 static std::unordered_map<uint32_t, uint32_t> forceAnims;
 static std::unordered_map<uint32_t, std::vector<uint32_t>> animKeys;
-static std::unordered_map<std::pair<uint32_t, uint32_t>, std::vector<uint32_t>, KeyHash> animKeyNewAnims;
+static std::map<std::pair<uint32_t, uint32_t>, std::vector<uint32_t>> animKeyNewAnims;
 
 typedef void*(*t_KeyMapping)(void*, uint32_t, uint32_t, void*);
 static t_KeyMapping fpKeyMapping = nullptr;
@@ -145,13 +138,13 @@ void EnableInputProcess()
                 if (underscorePos != std::wstring_view::npos) {
                     if (underscorePos == 0) {
                         std::wstring secondPart(keyStr.substr(underscorePos + 2));
-                        uint32_t secondVal = static_cast<uint32_t>(std::stoul(secondPart));
-                        uint32_t newVal = static_cast<uint32_t>(std::stoul(std::wstring(valStr)));
-                        forceAnims[secondVal] = newVal;
+                        uint32_t animId = static_cast<uint32_t>(std::stoul(secondPart));
+                        uint32_t newAnimId = static_cast<uint32_t>(std::stoul(std::wstring(valStr)));
+                        forceAnims[animId] = newAnimId;
                     } else {
                         std::wstring secondPart(keyStr.substr(underscorePos + 1));
-                        uint32_t firstVal = static_cast<uint32_t>(*pCurrent);
-                        uint32_t secondVal = static_cast<uint32_t>(std::stoul(secondPart));
+                        uint32_t key = static_cast<uint32_t>(*pCurrent);
+                        uint32_t animId = static_cast<uint32_t>(std::stoul(secondPart));
 
                         size_t start = 0;
                         while (start < valStr.size()) {
@@ -160,11 +153,11 @@ void EnableInputProcess()
                                 pos = valStr.size();
                             }
                             std::wstring_view token = valStr.substr(start, pos - start);
-                            uint32_t newVal = static_cast<uint32_t>(std::stoul(std::wstring(token)));
-                            animKeyNewAnims[std::make_pair(secondVal, firstVal)].push_back(newVal);
+                            uint32_t newAnimId = static_cast<uint32_t>(std::stoul(std::wstring(token)));
+                            animKeyNewAnims[std::make_pair(animId, key)].push_back(newAnimId);
                             start = pos + 1;
                         }
-                        animKeys[secondVal].push_back(firstVal);
+                        animKeys[animId].push_back(key);
                     }
                 }
             }
