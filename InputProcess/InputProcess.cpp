@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "ThirdParty/minHook/include/MinHook.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "InputProcess.h"
 #include <map>
@@ -7,9 +6,10 @@
 constexpr uintptr_t HOOK_KEY_MAPPING_ADDR = 0x142600d50;
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 
+constexpr uint32_t INVALID_ANIM = 0xFFFFFFFF;
+
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> keyRemap;
 
-static std::unordered_map<uint32_t, uint32_t> forceAnims;
 static std::unordered_map<uint32_t, std::vector<uint32_t>> animKeys;
 static std::map<std::pair<uint32_t, uint32_t>, std::vector<uint32_t>> animKeyNewAnims;
 
@@ -21,11 +21,13 @@ static t_sub_1407e3ea0 fp_sub_1407e3ea0 = reinterpret_cast<t_sub_1407e3ea0>(0x14
 
 extern bool g_log_key_remap;
 
-static uint32_t lastAnim = UINT32_MAX;
+static uint32_t lastAnim = INVALID_ANIM;
 static int vKey = 0;
 static int comboIndex = 0;
 static std::vector<uint32_t>* comboAnimsPtr = nullptr;
 static bool blockCombo = false;
+static uint32_t deflectAnim = INVALID_ANIM;
+static uint32_t deflectNewAnim = INVALID_ANIM;
 
 void* HookedKeyMapping(void* arg1, uint32_t arg2, uint32_t arg3, void* arg4)
 {
@@ -48,19 +50,18 @@ uintptr_t HookedNpcAnim(void* arg1, uint32_t arg2)
     uintptr_t result = fp_sub_1407e3ea0(arg1);
     uint32_t* pAnim = reinterpret_cast<uint32_t*>(result + 0x170);
 
-    if (arg2 == UINT32_MAX) {
+    if (arg2 == INVALID_ANIM) {
         blockCombo = false;
-        if ((lastAnim != UINT32_MAX) && ((GetAsyncKeyState(vKey) & 0x8000) == 0)) {
-            lastAnim = UINT32_MAX;
+        if ((lastAnim != INVALID_ANIM) && ((GetAsyncKeyState(vKey) & 0x8000) == 0)) {
+            lastAnim = INVALID_ANIM;
         }
-        *pAnim = UINT32_MAX;
+        *pAnim = INVALID_ANIM;
         return result;
     }
 
-    auto f = forceAnims.find(arg2);
-    if (f != forceAnims.end()) {
-        lastAnim = UINT32_MAX;
-        *pAnim = f->second;
+    if (arg2 == deflectAnim) {
+        lastAnim = INVALID_ANIM;
+        *pAnim = deflectNewAnim;
         return result;
     }
 
@@ -92,16 +93,16 @@ uintptr_t HookedNpcAnim(void* arg1, uint32_t arg2)
         }
     }
 
-    lastAnim = UINT32_MAX;
+    lastAnim = INVALID_ANIM;
     *pAnim = arg2;
     return result;
 }
 
 void EnableInputProcess()
 {
-    WCHAR keyRemapSection[MAX_SECTION_SIZE];
-    if (GetPrivateProfileSectionW(L"key_remap", keyRemapSection, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
-        for (const WCHAR* pCurrent = keyRemapSection; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
+    WCHAR buffer[MAX_SECTION_SIZE];
+    if (GetPrivateProfileSectionW(L"key_remap", buffer, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
+        for (const WCHAR* pCurrent = buffer; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
             std::wstring_view line(pCurrent);
 
             size_t equalsPos = line.find(L'=');
@@ -124,24 +125,30 @@ void EnableInputProcess()
         }
     }
 
-    WCHAR npcAnimSection[MAX_SECTION_SIZE];
-    if (GetPrivateProfileSectionW(L"npc_anim_change", npcAnimSection, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
-        for (const WCHAR* pCurrent = npcAnimSection; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
-            std::wstring_view line(pCurrent);
+    GetPrivateProfileStringW(L"npc_anim_change", L"npc_deflect", L"", buffer, MAX_SECTION_SIZE, L".\\mod_engine.ini");
+    if (lstrlenW(buffer) > 0) {
+        std::wstring str(buffer);
+        size_t equalsPos = str.find(L'_');
+        if (equalsPos != std::wstring::npos) {
+            deflectAnim = static_cast<uint32_t>(std::stoul(str.substr(0, equalsPos)));
+            deflectNewAnim = static_cast<uint32_t>(std::stoul(str.substr(equalsPos + 1)));
+        }
+    }
 
-            size_t equalsPos = line.find(L'=');
-            if (equalsPos != std::wstring_view::npos) {
-                std::wstring_view keyStr = line.substr(0, equalsPos);
-                std::wstring_view valStr = line.substr(equalsPos + 1);
+    GetPrivateProfileStringW(L"npc_anim_change", L"npc_anim_config", L"", buffer, MAX_SECTION_SIZE, L".\\mod_engine.ini");
+    if (lstrlenW(buffer) > 0) {
+        fs::path configPath = fs::current_path() / buffer;
+        if (GetPrivateProfileSectionW(L"npc_anim_config", buffer, MAX_SECTION_SIZE, configPath.wstring().c_str())) {
+            for (const WCHAR* pCurrent = buffer; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
+                std::wstring_view line(pCurrent);
 
-                size_t underscorePos = keyStr.find(L'_');
-                if (underscorePos != std::wstring_view::npos) {
-                    if (underscorePos == 0) {
-                        std::wstring secondPart(keyStr.substr(underscorePos + 2));
-                        uint32_t animId = static_cast<uint32_t>(std::stoul(secondPart));
-                        uint32_t newAnimId = static_cast<uint32_t>(std::stoul(std::wstring(valStr)));
-                        forceAnims[animId] = newAnimId;
-                    } else {
+                size_t equalsPos = line.find(L'=');
+                if (equalsPos != std::wstring_view::npos) {
+                    std::wstring_view keyStr = line.substr(0, equalsPos);
+                    std::wstring_view valStr = line.substr(equalsPos + 1);
+
+                    size_t underscorePos = keyStr.find(L'_');
+                    if (underscorePos != std::wstring_view::npos) {
                         std::wstring secondPart(keyStr.substr(underscorePos + 1));
                         uint32_t key = static_cast<uint32_t>(*pCurrent);
                         uint32_t animId = static_cast<uint32_t>(std::stoul(secondPart));
@@ -171,7 +178,7 @@ void EnableInputProcess()
         }
     }
 
-    if (!forceAnims.empty() || !animKeys.empty()) {
+    if ((deflectAnim != INVALID_ANIM) || !animKeys.empty()) {
         if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR), &HookedNpcAnim, NULL) == MH_OK) {
             MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR));
             PatchNpcAnimHook(HOOK_NPC_ANIM_ADDR);

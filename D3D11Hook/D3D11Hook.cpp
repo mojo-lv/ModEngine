@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "ThirdParty/minhook/include/MinHook.h"
 #include "DebugMenu/Graphics.h"
 #include "D3D11Hook.h"
 

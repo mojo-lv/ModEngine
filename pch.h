@@ -17,7 +17,9 @@
 #include <cwctype>
 #include <unordered_map>
 
-#define MAX_SECTION_SIZE 2048
+#include "ThirdParty/minhook/include/MinHook.h"
+
+#define MAX_SECTION_SIZE 4096
 
 namespace fs = std::filesystem;
 

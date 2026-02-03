@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "ThirdParty/minhook/include/MinHook.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "FilesMod.h"
 

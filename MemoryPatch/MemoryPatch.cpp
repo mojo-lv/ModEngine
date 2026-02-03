@@ -50,6 +50,11 @@ void ApplyMemoryPatch()
             }
         }
     }
+
+    if (GetPrivateProfileIntW(L"npc_anim_change", L"npc_anim_cancel", 0, L".\\mod_engine.ini") != 0) {
+        std::vector<BYTE> bytes = {0xE9, 0xE8, 0xFD, 0xFF, 0xFF};
+        PatchMemory(0x140B5204C, bytes);
+    }
 }
 
 void PatchSaveFileCheck()
