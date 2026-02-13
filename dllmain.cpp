@@ -7,20 +7,14 @@
 #include "D3D11Hook/D3D11Hook.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
-bool g_log_debug_menu = false;
-bool g_log_key_remap = false;
 
 static void OnAttach()
 {
-    if (GetPrivateProfileIntW(L"logs", L"debug_menu", 0, L".\\mod_engine.ini") != 0) {
-        g_log_debug_menu = true;
-    }
-
-    if (GetPrivateProfileIntW(L"logs", L"key_remap", 0, L".\\mod_engine.ini") != 0) {
-        g_log_key_remap= true;
-    }
-
-    if (g_log_debug_menu || g_log_key_remap) {
+    if (GetPrivateProfileIntW(L"logs", L"console", 0, L".\\mod_engine.ini") != 0) {
+        AllocConsole();
+        FILE *stream;
+        freopen_s(&stream, "CONOUT$", "w", stdout);
+    } else {
         FILE *stream;
         freopen_s(&stream, ".\\mod_engine.log", "w", stdout);
     }

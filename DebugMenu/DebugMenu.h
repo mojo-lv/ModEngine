@@ -14,4 +14,5 @@ struct MenuEntry {
 
 extern std::vector<MenuEntry> g_menuList;
 extern FontConfig g_fontConfig;
+extern bool g_log_debug_menu;
 void EnableDebugMenu();

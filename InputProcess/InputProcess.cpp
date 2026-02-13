@@ -19,7 +19,7 @@ static t_KeyMapping fpKeyMapping = nullptr;
 typedef uintptr_t(*t_sub_1407e3ea0)(void*);
 static t_sub_1407e3ea0 fp_sub_1407e3ea0 = reinterpret_cast<t_sub_1407e3ea0>(0x1407e3ea0);
 
-extern bool g_log_key_remap;
+static bool g_log_key_remap = false;
 
 static uint32_t lastAnim = INVALID_ANIM;
 static int vKey = 0;
@@ -100,6 +100,10 @@ uintptr_t HookedNpcAnim(void* arg1, uint32_t arg2)
 
 void EnableInputProcess()
 {
+    if (GetPrivateProfileIntW(L"logs", L"key_remap", 0, L".\\mod_engine.ini") != 0) {
+        g_log_key_remap= true;
+    }
+
     WCHAR buffer[MAX_SECTION_SIZE];
     if (GetPrivateProfileSectionW(L"key_remap", buffer, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
         for (const WCHAR* pCurrent = buffer; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {

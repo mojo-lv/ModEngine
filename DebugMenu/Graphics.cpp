@@ -10,7 +10,6 @@ static GraphicsContext gCtx;
 
 static bool log_triggered = false;
 static bool last_state = false;
-extern bool g_log_debug_menu;
 
 static void DrawDebugMenu()
 {

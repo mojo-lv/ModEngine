@@ -83,6 +83,17 @@ void PatchDebugMenu(uintptr_t hookAddress)
     PatchMemory(0x141187590, movAl01Bytes);
 };
 
+void PatchDebugNPC(uintptr_t hookAddress)
+{
+    std::vector<BYTE> callBytes = {0xE8};
+    PatchMemory(hookAddress, callBytes);
+    std::vector<BYTE> jmpBytes = {0xe9, 0x22, 0x00, 0x00, 0x00};
+    PatchMemory(0x140614f18, jmpBytes);
+
+    std::vector<BYTE> movR9d0Bytes = {0x41, 0xB9, 0x00, 0x00, 0x00, 0x00};
+    PatchMemory(0x140b6a146, movR9d0Bytes);
+}
+
 void PatchNpcAnimHook(uintptr_t hookAddress)
 {
     std::vector<BYTE> bytes = { 0xba, 0xff, 0xff, 0xff, 0xff,

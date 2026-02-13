@@ -3,9 +3,16 @@
 #include "DebugMenu.h"
 
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
+constexpr uintptr_t HOOK_DEBUG_NPC_ADDR = 0x140614f13;
+
+typedef uintptr_t(*t_addNPC)(uintptr_t, uintptr_t*);
+static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
+static uintptr_t* pNPCList = reinterpret_cast<uintptr_t*>(0x143d547d8);
+static uintptr_t* pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 
 std::vector<MenuEntry> g_menuList;
 FontConfig g_fontConfig;
+bool g_log_debug_menu = false;
 
 static std::string WideCharToUTF8(const wchar_t* wstr)
 {
@@ -39,8 +46,26 @@ void HookedDebugMenu(void* qUnkClass, float* pLocation, wchar_t* pwString)
     g_menuList.push_back(entry);
 }
 
+void HookedDebugNPC()
+{
+    uintptr_t* begin = *(uintptr_t**)(*pWorldChrMan + 0x3130);
+    uintptr_t* end = *(uintptr_t**)(*pWorldChrMan + 0x3138);
+
+    if (begin == nullptr || end == nullptr || begin >= end) return;
+
+    for (size_t i = 0; i < end - begin; i++) {
+        if (*(uint8_t*)(*(begin + i) + 0x1a15) & 1) {
+            fpAddNPC(*pNPCList, begin + i);
+        }
+    }
+}
+
 void EnableDebugMenu()
 {
+    if (GetPrivateProfileIntW(L"logs", L"debug_menu", 0, L".\\mod_engine.ini") != 0) {
+        g_log_debug_menu = true;
+    }
+
     fs::path curPath = fs::current_path();
     WCHAR fontPath[MAX_PATH];
     GetPrivateProfileStringW(L"debug_menu", L"font_path", L"", fontPath, MAX_PATH, L".\\mod_engine.ini");
@@ -66,5 +91,10 @@ void EnableDebugMenu()
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_MENU_ADDR), &HookedDebugMenu, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_MENU_ADDR));
         PatchDebugMenu(HOOK_DEBUG_MENU_ADDR);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR), &HookedDebugNPC, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR));
+        PatchDebugNPC(HOOK_DEBUG_NPC_ADDR);
     }
 }
