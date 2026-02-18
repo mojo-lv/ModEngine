@@ -28,7 +28,7 @@ static void DrawDebugMenu()
     bool found = false;
     for (auto& entry : g_menuList) {
         if (log_triggered) {
-            std::cout << "[DebugMenu] " << entry.text << std::endl;
+            std::cout << "[debug_menu] " << entry.text << std::endl;
         }
 
         if (highlightNext && !found) {
@@ -144,17 +144,21 @@ void RenderImGui(IDXGISwapChain* pSwapChain)
 
 void ShutdownImGui()
 {
-    ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+    if (gCtx.pSwapChain) {
+        gCtx.pSwapChain = nullptr;
 
-    if (gCtx.pRenderTargetView) {
-        gCtx.pRenderTargetView->Release();
-        gCtx.pRenderTargetView = nullptr;
-    }
+        ImGui_ImplDX11_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
 
-    if (gCtx.pContext) {
-        gCtx.pContext->Release();
-        gCtx.pContext = nullptr;
+        if (gCtx.pRenderTargetView) {
+            gCtx.pRenderTargetView->Release();
+            gCtx.pRenderTargetView = nullptr;
+        }
+
+        if (gCtx.pContext) {
+            gCtx.pContext->Release();
+            gCtx.pContext = nullptr;
+        }
     }
 }

@@ -4,6 +4,7 @@
 
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
 constexpr uintptr_t HOOK_DEBUG_NPC_ADDR = 0x140614f13;
+constexpr uintptr_t HOOK_NPC_DAMAGE_ADDR = 0x140b6a13d;
 
 typedef uintptr_t(*t_addNPC)(uintptr_t, uintptr_t*);
 static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
@@ -13,6 +14,8 @@ static uintptr_t* pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 std::vector<MenuEntry> g_menuList;
 FontConfig g_fontConfig;
 bool g_log_debug_menu = false;
+
+extern INIReader g_INI;
 
 static std::string WideCharToUTF8(const wchar_t* wstr)
 {
@@ -60,29 +63,36 @@ void HookedDebugNPC()
     }
 }
 
+uint16_t HookedNPCDamage(uint16_t arg1)
+{
+    if (arg1 == 0x101 || arg1 == 0) {
+        return 0;
+    }
+
+    //std::cout << "[DebugMenu] Unknown Damage " << std::hex << arg1 << std::endl;
+    return arg1;
+}
+
 void EnableDebugMenu()
 {
-    if (GetPrivateProfileIntW(L"logs", L"debug_menu", 0, L".\\mod_engine.ini") != 0) {
-        g_log_debug_menu = true;
+    g_log_debug_menu = g_INI.GetBoolean("logs", "debug_menu", false);
+    std::string fontPathStr = g_INI.GetString("debug_menu", "font_path", "");
+    ULONG fontSize = g_INI.GetUnsigned("debug_menu", "font_size", 0);
+    ULONG color = g_INI.GetUnsigned("debug_menu", "color", 0);
+
+    fs::path fontPath = fs::current_path() / fontPathStr;
+    if (!fontPathStr.empty() && fs::exists(fontPath)) {
+        g_fontConfig.path = fontPath.string();
     }
 
-    fs::path curPath = fs::current_path();
-    WCHAR fontPath[MAX_PATH];
-    GetPrivateProfileStringW(L"debug_menu", L"font_path", L"", fontPath, MAX_PATH, L".\\mod_engine.ini");
-    if ((lstrlenW(fontPath) > 0) && fs::exists(curPath / fontPath)) {
-        g_fontConfig.path = (curPath / fontPath).u8string();
-    }
-
-    UINT fontSize = GetPrivateProfileIntW(L"debug_menu", L"font_size", 0, L".\\mod_engine.ini");
     if (fontSize != 0) {
         g_fontConfig.size = (float)fontSize;
     }
 
-    UINT rgb = GetPrivateProfileIntW(L"debug_menu", L"color", 0, L".\\mod_engine.ini");
-    if (rgb != 0) {
-        UINT r = (rgb >> 16) & 0xFF;
-        UINT g = (rgb >> 8) & 0xFF;
-        UINT b = rgb & 0xFF;
+    if (color != 0) {
+        UINT r = (color >> 16) & 0xFF;
+        UINT g = (color >> 8) & 0xFF;
+        UINT b = color & 0xFF;
         UINT a = 0xFF;
         // 0xAABBGGRR
         g_fontConfig.color = (a << 24) | (b << 16) | (g << 8) | r;
@@ -90,11 +100,16 @@ void EnableDebugMenu()
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_MENU_ADDR), &HookedDebugMenu, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_MENU_ADDR));
-        PatchDebugMenu(HOOK_DEBUG_MENU_ADDR);
+        PatchDebugMenuHook(HOOK_DEBUG_MENU_ADDR);
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR), &HookedDebugNPC, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR));
-        PatchDebugNPC(HOOK_DEBUG_NPC_ADDR);
+        PatchDebugNPCHook(HOOK_DEBUG_NPC_ADDR);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR), &HookedNPCDamage, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR));
+        PatchNPCDamageHook(HOOK_NPC_DAMAGE_ADDR);
     }
 }

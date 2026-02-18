@@ -20,6 +20,7 @@ static std::wstring g_cutscene_path;
 static const std::wstring g_cutscene_path_temp = L"./<cs>";
 
 extern std::vector<HMODULE> g_LoadedDLLs;
+extern INIReader g_INI;
 
 static bool ScanModsDir(fs::path modsDir)
 {
@@ -153,18 +154,27 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
 
 void ApplyFilesMod()
 {
+    std::string dlls = g_INI.GetString("files", "dlls", "");
+    std::string mods = g_INI.GetString("files", "mods", "");
+    std::string save = g_INI.GetString("files", "save", "");
+    std::string cutscene = g_INI.GetString("files", "cutscene", "");
+
+    size_t size;
+    for (const auto& key : g_INI.Keys("virtual_alloc_size")) {
+        size = g_INI.GetUnsigned64("virtual_alloc_size", key, 0);
+        if (size != 0) {
+            va_size[std::wstring(key.begin(), key.end())] = size;
+        }
+    }
+
     fs::path curPath = fs::current_path();
     g_cur_len = curPath.wstring().length();
 
-    WCHAR configPath[MAX_PATH];
-    GetPrivateProfileStringW(L"files", L"dlls", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
-    if (lstrlenW(configPath) > 0) {
-        ScanDllsDir(curPath / configPath);
+    if (!dlls.empty()) {
+        ScanDllsDir(curPath / dlls);
     }
 
-    GetPrivateProfileStringW(L"files", L"mods", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
-    if ((lstrlenW(configPath) > 0) && ScanModsDir(curPath / configPath)) {
-        //va_size.try_emplace(L"MO", 0x8400000);
+    if (!mods.empty() && ScanModsDir(curPath / mods)) {
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
@@ -173,9 +183,8 @@ void ApplyFilesMod()
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
     }
 
-    GetPrivateProfileStringW(L"files", L"save", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
-    if ((lstrlenW(configPath) > 0) && fs::exists(curPath / configPath)) {
-        g_save_path = (curPath / configPath).wstring();
+    if (!save.empty() && fs::exists(curPath / save)) {
+        g_save_path = (curPath / save).wstring();
         PatchSaveFileCheck();
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
@@ -183,27 +192,11 @@ void ApplyFilesMod()
                         reinterpret_cast<LPVOID*>(&fpCopyFileW));
     }
 
-    GetPrivateProfileStringW(L"files", L"cutscene", L"", configPath, MAX_PATH, L".\\mod_engine.ini");
-    if ((lstrlenW(configPath) > 0) && fs::exists(curPath / configPath)) {
-        g_cutscene_path = (curPath / configPath).wstring();
+    if (!cutscene.empty() && fs::exists(curPath / cutscene)) {
+        g_cutscene_path = (curPath / cutscene).wstring();
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
-    }
-
-    WCHAR section[MAX_SECTION_SIZE];
-    if (GetPrivateProfileSectionW(L"VirtualAlloc", section, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
-        for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
-            std::wstring_view line(pCurrent);
-            size_t equalsPos = line.find(L'=');
-            if (equalsPos != std::wstring_view::npos) {
-                std::wstring key(line.substr(0, equalsPos));
-                std::wstring value(line.substr(equalsPos + 1));
-
-                size_t size = std::stoull(value, nullptr, 0);
-                va_size.insert_or_assign(key, size);
-            }
-        }
     }
 }

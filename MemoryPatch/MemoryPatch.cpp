@@ -1,27 +1,9 @@
 #include "pch.h"
 #include "MemoryPatch.h"
 
-static std::vector<BYTE> HexSpaceStrToBytes(std::wstring_view str)
-{
-    std::vector<BYTE> bytes;
-    size_t start = 0;
-    while (start < str.length()) {
-        size_t end = str.find(L' ', start);
-        if (end == std::wstring_view::npos) {
-            end = str.length();
-        }
+extern INIReader g_INI;
 
-        if (end > start) {
-            std::wstring segment(str.substr(start, end - start));
-            bytes.push_back(static_cast<BYTE>(std::stoull(segment, nullptr, 16)));
-        }
-
-        start = end + 1;
-    }
-    return bytes;
-}
-
-static void PatchMemory(uintptr_t targetAddress, const std::vector<BYTE>& patchBytes)
+static void PatchMemory(uintptr_t targetAddress, const std::vector<uint8_t>& patchBytes)
 {
     if (!patchBytes.empty()) {
         DWORD oldProtect;
@@ -36,75 +18,118 @@ void ApplyMemoryPatch()
 {
     uintptr_t baseAddress = (uintptr_t)GetModuleHandleW(nullptr);
 
-    WCHAR section[MAX_SECTION_SIZE];
-    if (GetPrivateProfileSectionW(L"memory", section, MAX_SECTION_SIZE, L".\\mod_engine.ini")) {
-        for (const WCHAR* pCurrent = section; *pCurrent; pCurrent += wcslen(pCurrent) + 1) {
-            std::wstring_view line(pCurrent);
-            size_t equalsPos = line.find(L'=');
-            if (equalsPos != std::wstring_view::npos) {
-                std::wstring key(line.substr(0, equalsPos));
-                std::wstring_view value_view = line.substr(equalsPos + 1);
-
-                size_t offset = std::stoull(key, nullptr, 16);
-                PatchMemory(baseAddress + offset, HexSpaceStrToBytes(value_view));
+    size_t offset, start, pos, valSize;
+    uint8_t byte;
+    for (const auto& key : g_INI.Keys("memory")) {
+        std::string valStr = g_INI.GetString("memory", key, "");
+        if (!valStr.empty()) {
+            std::vector<uint8_t> bytes;
+            valSize = valStr.size();
+            start = 0;
+            while (start < valSize) {
+                pos = valStr.find(' ', start);
+                if (pos == std::string::npos) {
+                    pos = valSize;
+                }
+                if (pos > start) {
+                    byte = static_cast<uint8_t>(std::stoul(valStr.substr(start, pos - start), nullptr, 16));
+                    bytes.push_back(byte);
+                }
+                start = pos + 1;
             }
-        }
-    }
 
-    if (GetPrivateProfileIntW(L"npc_anim_change", L"npc_anim_cancel", 0, L".\\mod_engine.ini") != 0) {
-        std::vector<BYTE> bytes = {0xE9, 0xE8, 0xFD, 0xFF, 0xFF};
-        PatchMemory(0x140B5204C, bytes);
+            offset = std::stoull(key, nullptr, 16);
+            PatchMemory(baseAddress + offset, bytes);
+        }
     }
 }
 
 void PatchSaveFileCheck()
 {
-    std::vector<BYTE> bytes = {0x90, 0x90};
+    std::vector<uint8_t> bytes = {0x90, 0x90};
     PatchMemory(0x141B3C5AF, bytes);
     bytes = {0xEB};
     PatchMemory(0x140DFAB11, bytes);
     PatchMemory(0x140DFCC32, bytes);
 }
 
-void PatchDebugMenu(uintptr_t hookAddress)
+void PatchDebugMenuHook(uintptr_t hookAddress)
 {
-    std::vector<BYTE> callBytes = {0xE8};
+    std::vector<uint8_t> callBytes = {0xE8};
     PatchMemory(hookAddress, callBytes);
 
-    std::vector<BYTE> retBytes = {0xC3};
+    std::vector<uint8_t> retBytes = {0xC3};
     PatchMemory(0x142650400, retBytes);
     PatchMemory(0x14261E660, retBytes);
     PatchMemory(0x142619690, retBytes);
 
-    std::vector<BYTE> movAl01Bytes = {0xB0, 0x01};
+    std::vector<uint8_t> movAl01Bytes = {0xB0, 0x01};
     PatchMemory(0x1409791C0, movAl01Bytes);
     PatchMemory(0x1409791D0, movAl01Bytes);
     PatchMemory(0x1409791E0, movAl01Bytes);
     PatchMemory(0x141187590, movAl01Bytes);
 };
 
-void PatchDebugNPC(uintptr_t hookAddress)
+void PatchDebugNPCHook(uintptr_t hookAddress)
 {
-    std::vector<BYTE> callBytes = {0xE8};
-    PatchMemory(hookAddress, callBytes);
-    std::vector<BYTE> jmpBytes = {0xe9, 0x22, 0x00, 0x00, 0x00};
-    PatchMemory(0x140614f18, jmpBytes);
+    // call
+    std::vector<uint8_t> bytes = {0xE8};
+    PatchMemory(hookAddress, bytes);
 
-    std::vector<BYTE> movR9d0Bytes = {0x41, 0xB9, 0x00, 0x00, 0x00, 0x00};
-    PatchMemory(0x140b6a146, movR9d0Bytes);
+    // jmp short 0x140614f3f
+    bytes = {0xEB, 0x25};
+    PatchMemory(hookAddress + 5, bytes);
+}
+
+void PatchNPCDamageHook(uintptr_t hookAddress)
+{
+    // movzx ecx, word [rcx+rbx*2]; call
+    std::vector<uint8_t> bytes = {0x0F, 0xB7, 0x0C, 0x59, 0xE8};
+    PatchMemory(hookAddress - 4, bytes);
+
+    // cmp ah, 0x0; nop
+    bytes = {0x80, 0xFC, 0x00, 0x90};
+    PatchMemory(hookAddress + 5, bytes);
 }
 
 void PatchNpcAnimHook(uintptr_t hookAddress)
 {
-    std::vector<BYTE> bytes = { 0xba, 0xff, 0xff, 0xff, 0xff,
+    /*  mov edx, 0xffffffff
+        cmp edi, 0xb
+        ja short 0x1407e385b
+        jmp short 0x1407e384e  */
+    std::vector<uint8_t> bytes = {0xba, 0xff, 0xff, 0xff, 0xff,
                                 0x83, 0xff, 0x0b,
-                                0x0f, 0x87, 0x13, 0x00, 0x00, 0x00,
-                                0x90 };
-    PatchMemory(0x1407e383a, bytes);
-    bytes = {0x94};
-    PatchMemory(0x1407e3855, bytes);
-    bytes = {0xE8};
-    PatchMemory(hookAddress, bytes);
-    bytes = {0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
-    PatchMemory(0x1407e3860, bytes);
+                                0x77, 0x17,
+                                0xeb, 0x08};
+    PatchMemory(hookAddress - 33, bytes);
+
+    // mov edx, dword [rbx+rax*4+0x90]; call
+    bytes = {0x8B, 0x94, 0x83, 0x90, 0x00, 0x00, 0x00, 0xE8};
+    PatchMemory(hookAddress - 7, bytes);
+
+    // jmp short 0x1407e3866
+    bytes = {0xeb, 0x04};
+    PatchMemory(hookAddress + 5, bytes);
+}
+
+void PatchNpcAnimCancelHook(uintptr_t hookAddress)
+{
+    // mov r8b, 0x17; jmp short 0x140b52058
+    std::vector<uint8_t> bytes = {0x41, 0xb0, 0x17, 0xeb, 0x07};
+    PatchMemory(0x140b5204c, bytes);
+
+    /*  mov r8b, 0x4e
+        mov rdx, rdi
+        mov rcx, rsi
+        call         */
+    bytes = {0x41, 0xb0, 0x4e,
+            0x48, 0x89, 0xfa,
+            0x48, 0x89, 0xf1,
+            0xe8};
+    PatchMemory(hookAddress - 9, bytes);
+
+    // mov rcx, rax; nop
+    bytes = {0x48, 0x89, 0xc1, 0x90};
+    PatchMemory(hookAddress + 5, bytes);
 }

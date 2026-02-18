@@ -9,17 +9,20 @@
 
 // add headers that you want to pre-compile here
 #include <windows.h>
+
+#include <cctype>
+#include <cwctype>
+
 #include <string>
 #include <vector>
 #include <iostream>
 #include <filesystem>  // C++17
 #include <algorithm>
-#include <cwctype>
 #include <unordered_map>
+#include <map>
 
+#include "ThirdParty/inih/cpp/INIReader.h"
 #include "ThirdParty/minhook/include/MinHook.h"
-
-#define MAX_SECTION_SIZE 4096
 
 namespace fs = std::filesystem;
 

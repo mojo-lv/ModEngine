@@ -16,18 +16,22 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "$<$<CONFIG:Debug>:MultiThreadedDebugDLL>$<$<NOT:$<CONFIG:Debug>>:MultiThreadedDLL>")
 endif()
 
-# 定义源文件列表
-set(SOURCES
-    DllExports/exports.def
-    DllExports/exported.cpp
+# 定义项目源文件列表
+set(PROJECT_SOURCES
     pch.cpp
     dllmain.cpp
+    DllExports/exports.def
+    DllExports/exported.cpp
     D3D11Hook/D3D11Hook.cpp
     DebugMenu/DebugMenu.cpp
     DebugMenu/Graphics.cpp
     FilesMod/FilesMod.cpp
     InputProcess/InputProcess.cpp
     MemoryPatch/MemoryPatch.cpp
+)
+
+# 定义第三方库ImGui的源文件列表
+set(IMGUI_SOURCES
     ThirdParty/imgui/imgui.cpp
     ThirdParty/imgui/imgui_draw.cpp
     ThirdParty/imgui/imgui_tables.cpp
@@ -36,8 +40,14 @@ set(SOURCES
     ThirdParty/imgui/imgui_impl_win32.cpp
 )
 
+# 将所有源文件合并到一个列表中
+set(ALL_SOURCES
+    ${PROJECT_SOURCES}
+    ${IMGUI_SOURCES}
+)
+
 # 添加动态链接库目标
-add_library(${PROJECT_NAME} SHARED ${SOURCES})
+add_library(${PROJECT_NAME} SHARED ${ALL_SOURCES})
 
 # 添加预编译头
 target_precompile_headers(${PROJECT_NAME} PRIVATE pch.h)
@@ -71,11 +81,12 @@ if(MSVC)
     )
 endif()
 
-# 从源码构建 minhook
+# 从源码构建第三方库
+add_subdirectory(ThirdParty/inih)
 add_subdirectory(ThirdParty/minhook)
 
-# 链接到编译后的 minhook 库以及其他系统库
-target_link_libraries(${PROJECT_NAME} PRIVATE minhook d3d11)
+# 链接到编译后的第三方库以及其他系统库
+target_link_libraries(${PROJECT_NAME} PRIVATE inih minhook d3d11)
 
 # 打印一些信息以供调试
 message(STATUS "Project Name: ${PROJECT_NAME}")
