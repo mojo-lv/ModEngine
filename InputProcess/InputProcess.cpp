@@ -38,7 +38,7 @@ extern INIReader g_INI;
 
 static bool IsKeyDown(int key)
 {
-    if (key > 255) return false;
+    if (key >= 256) return false;
     return (GetAsyncKeyState(key) & 0x8000) != 0;
 }
 
@@ -71,6 +71,7 @@ static void LoadAnimConfig()
                 }
                 if (pos > start) {
                     newAnimId = static_cast<uint32_t>(std::stoul(valStr.substr(start, pos - start)));
+                    if (newAnimId == 0) newAnimId = INVALID_ANIM;
                     animKeyNewAnims[std::make_pair(animId, key)].push_back(newAnimId);
                 }
                 start = pos + 1;
@@ -128,13 +129,15 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     if (it != animKeys.end()) {
         for (uint32_t val : it->second) {
             if ((val == 256) || (val > 256 && val == curAnim) || IsKeyDown(val)) {
+                if (arg2 == lastAnim && vKey == 256 && val > 256) continue;
+
                 if (arg2 == lastAnim && vKey == val) {
                     if (!blockCombo) {
                         if (curAnim == (*comboAnimsPtr)[comboIndex]) {
                             comboIndex = (comboIndex + 1) % comboAnimsPtr->size();
                             blockCombo = true;
                         }
-                    } else if (val > 255) {
+                    } else if (val >= 256) {
                         if (animApplied) {
                             *pAnim = INVALID_ANIM;
                             return g_Npc;
@@ -169,8 +172,11 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
         animApplied = true;
     }
 
-    lastAnim = INVALID_ANIM;
-    *pAnim = arg2;
+    if (curAnim != 9999) {
+        lastAnim = INVALID_ANIM;
+        *pAnim = arg2;
+    }
+
     return g_Npc;
 }
 
