@@ -102,6 +102,7 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     g_Npc = fp_sub_1407e3ea0(arg1);
     uint32_t curAnim = *reinterpret_cast<uint32_t*>(g_Npc + 0xC8) % 10000;
     uint32_t* pAnim = reinterpret_cast<uint32_t*>(g_Npc + 0x170);
+    // std::cout << curAnim << " " << *pAnim << " " << arg2 << std::endl;
 
     if (arg2 == INVALID_ANIM) {
         animApplied = false;
@@ -141,7 +142,8 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
                         if (animApplied) {
                             *pAnim = INVALID_ANIM;
                             return g_Npc;
-                        } else if (curAnim == (*comboAnimsPtr)[comboIndex]) {
+                        } else if (std::find(comboAnimsPtr->begin(), comboAnimsPtr->end(),
+                                                curAnim) != comboAnimsPtr->end()) {
                             animApplied = true;
                         }
                     }
