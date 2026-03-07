@@ -194,7 +194,7 @@ int INIReader::ValueHandler(void* user, const char* section, const char* name,
     if (reader->_values[key].empty())
         reader->_keys.push_back(key);
     else
-        reader->_values[key] += "\n";
+        reader->_values[key] += "_";
     reader->_values[key] += value ? value : "";
     return 1;
 }

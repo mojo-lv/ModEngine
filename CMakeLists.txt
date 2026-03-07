@@ -26,7 +26,9 @@ set(PROJECT_SOURCES
     DebugMenu/DebugMenu.cpp
     DebugMenu/Graphics.cpp
     FilesMod/FilesMod.cpp
-    InputProcess/InputProcess.cpp
+    InputProcess/KeyRemap.cpp
+    InputProcess/NpcAnimChange.cpp
+    InputProcess/PlayerSkillChange.cpp
     MemoryPatch/MemoryPatch.cpp
 )
 

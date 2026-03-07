@@ -1,16 +1,20 @@
 #include "pch.h"
 #include "FilesMod/FilesMod.h"
-#include "InputProcess/InputProcess.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "DebugMenu/DebugMenu.h"
 #include "DebugMenu/Graphics.h"
 #include "D3D11Hook/D3D11Hook.h"
+#include "InputProcess/KeyRemap.h"
+#include "InputProcess/NpcAnimChange.h"
+#include "InputProcess/PlayerSkillChange.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
 INIReader g_INI("./mod_engine.ini");
 
 static void OnAttach()
 {
+    MH_Initialize();
+
     FILE *stream;
     if (g_INI.GetBoolean("logs", "console", false)) {
         AllocConsole();
@@ -19,16 +23,16 @@ static void OnAttach()
         freopen_s(&stream, "./mod_engine.log", "w", stdout);
     }
 
-    MH_Initialize();
-
-    ApplyFilesMod();
-    EnableInputProcess();
-    ApplyMemoryPatch();
-
     if (g_INI.GetBoolean("debug_menu", "enable", false)) {
         EnableDebugMenu();
         CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
     }
+
+    ApplyFilesMod();
+    EnableKeyRemap();
+    EnableNpcAnimChange();
+    EnablePlayerSkillChange();
+    ApplyMemoryPatch();
 
     MH_EnableHook(MH_ALL_HOOKS);
 }
