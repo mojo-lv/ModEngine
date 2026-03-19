@@ -9,7 +9,7 @@
 #include "InputProcess/PlayerSkillChange.h"
 
 std::vector<HMODULE> g_LoadedDLLs;
-INIReader g_INI("./mod_engine.ini");
+INIReader g_INI("mod_engine.ini");
 
 static void OnAttach()
 {
@@ -20,7 +20,7 @@ static void OnAttach()
         AllocConsole();
         freopen_s(&stream, "CONOUT$", "w", stdout);
     } else {
-        freopen_s(&stream, "./mod_engine.log", "w", stdout);
+        freopen_s(&stream, "mod_engine.log", "w", stdout);
     }
 
     if (g_INI.GetBoolean("debug_menu", "enable", false)) {
@@ -56,7 +56,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         case DLL_PROCESS_ATTACH:
             if (g_INI.ParseError() < 0) {
                 FILE *stream;
-                freopen_s(&stream, "./mod_engine.log", "w", stdout);
+                freopen_s(&stream, "mod_engine.log", "w", stdout);
                 std::cout << "Can't load 'mod_engine.ini'" << std::endl;
                 return FALSE;
             }

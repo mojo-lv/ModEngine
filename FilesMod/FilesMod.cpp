@@ -22,7 +22,7 @@ static const std::wstring g_cutscene_path_temp = L"./<cs>";
 extern std::vector<HMODULE> g_LoadedDLLs;
 extern INIReader g_INI;
 
-static bool ScanModsDir(fs::path modsDir)
+static bool ScanModsDir(const fs::path& modsDir)
 {
     if (!fs::exists(modsDir) || !fs::is_directory(modsDir)) {
         return false;
@@ -63,7 +63,7 @@ static bool ScanModsDir(fs::path modsDir)
     return true;
 }
 
-static void ScanDllsDir(fs::path dllsDir)
+static void ScanDllsDir(const fs::path& dllsDir)
 {
     if (fs::exists(dllsDir) && fs::is_directory(dllsDir)) {
         for (const auto& p : fs::directory_iterator(dllsDir)) {

@@ -16,9 +16,6 @@ static t_sub_140dd9c60 fp_sub_140dd9c60 = nullptr;
 static std::vector<std::vector<std::pair<uint32_t, uint32_t>>> CombatArtData(3);
 static std::vector<std::vector<std::pair<uint32_t, uint32_t>>> ProstheticData(3);
 
-static uintptr_t playerBaseAddr = 0;
-static uintptr_t equipBaseAddr = 0;
-static uint32_t* skillBasePtr = nullptr;
 static uint32_t skillEquipData[17];
 
 static PlayerSkillConfig skillConfig;
@@ -67,8 +64,11 @@ static void LoadSkillConfig()
 
 size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
 {
-    if (playerBaseAddr == 0) {
-        playerBaseAddr = *reinterpret_cast<uintptr_t*>(*reinterpret_cast<uintptr_t*>(0x143d5aac0) + 0x8);
+    static uintptr_t equipBaseAddr = 0;
+    static uint32_t* skillBasePtr = nullptr;
+
+    if (!skillBasePtr) {
+        uintptr_t playerBaseAddr = *reinterpret_cast<uintptr_t*>(*reinterpret_cast<uintptr_t*>(0x143d5aac0) + 0x8);
         equipBaseAddr = *reinterpret_cast<uintptr_t*>(playerBaseAddr + 0x5B0) + 0x10;
         skillBasePtr = reinterpret_cast<uint32_t*>(playerBaseAddr + 0x278 + 0x24);
 
@@ -132,7 +132,7 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
                             skillBasePtr[i] = skillEquipData[i + 5];
                         }
                         skillEquipData[slot] = skillEquipData[14];
-                        *current_keys_raw -= InputFlags::UseProsthetic;
+                        *current_keys_raw &= ~InputFlags::UseProsthetic;
                     }
                     return fp_sub_140B2C190(p1, p2);
                 }
@@ -144,7 +144,7 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
                 skillBasePtr[slot] = EMPTY_SLOT;
                 SetSkillSlot(slot, skillEquipData, true);
                 skillEquipData[slot] = skillEquipData[14];
-                *current_keys_raw -= InputFlags::UseProsthetic;
+                *current_keys_raw &= ~InputFlags::UseProsthetic;
             }
         }
         return fp_sub_140B2C190(p1, p2);
@@ -162,7 +162,7 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
                         SetSkillSlot(1, skillEquipData, true);
                         skillBasePtr[1] = skillEquipData[6];
                         skillEquipData[1] = skillEquipData[14];
-                        *current_keys_raw -= InputFlags::UseCombatArt;
+                        *current_keys_raw &= ~InputFlags::UseCombatArt;
                     }
                     return fp_sub_140B2C190(p1, p2);
                 }
@@ -173,7 +173,7 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
                 skillBasePtr[1] = EMPTY_SLOT;
                 SetSkillSlot(1, skillEquipData, true);
                 skillEquipData[1] = skillEquipData[14];
-                *current_keys_raw -= InputFlags::UseCombatArt;
+                *current_keys_raw &= ~InputFlags::UseCombatArt;
             }
         }
         return fp_sub_140B2C190(p1, p2);
@@ -215,6 +215,9 @@ void EnablePlayerSkillChange()
         MH_CreateHook(reinterpret_cast<LPVOID>(0x140B2C190), &hook_sub_140B2C190, 
                         reinterpret_cast<LPVOID*>(&fp_sub_140B2C190));
 
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140dd9c60), &hook_sub_140dd9c60, 
+                        reinterpret_cast<LPVOID*>(&fp_sub_140dd9c60));
+    } else if (logEquipSkill) {
         MH_CreateHook(reinterpret_cast<LPVOID>(0x140dd9c60), &hook_sub_140dd9c60, 
                         reinterpret_cast<LPVOID*>(&fp_sub_140dd9c60));
     }
