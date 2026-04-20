@@ -11,18 +11,11 @@
 std::vector<HMODULE> g_LoadedDLLs;
 INIReader g_INI("mod_engine.ini");
 
-static void OnAttach()
+typedef int64_t(*t_SteamAPI_Init)();
+t_SteamAPI_Init fpSteamInit = nullptr;
+
+static void ApplyPostUnpackHooks()
 {
-    MH_Initialize();
-
-    FILE *stream;
-    if (g_INI.GetBoolean("logs", "console", false)) {
-        AllocConsole();
-        freopen_s(&stream, "CONOUT$", "w", stdout);
-    } else {
-        freopen_s(&stream, "mod_engine.log", "w", stdout);
-    }
-
     if (g_INI.GetBoolean("debug_menu", "enable", false)) {
         EnableDebugMenu();
         CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
@@ -35,6 +28,21 @@ static void OnAttach()
     ApplyMemoryPatch();
 
     MH_EnableHook(MH_ALL_HOOKS);
+}
+
+int64_t Hook_SteamAPI_Init()
+{
+    ApplyPostUnpackHooks();
+    return fpSteamInit();
+}
+
+static void OnAttach()
+{
+    MH_Initialize();
+    auto steamApiHwnd = GetModuleHandleW(L"steam_api64.dll");
+    auto initAddr = GetProcAddress(steamApiHwnd, "SteamAPI_Init");
+    MH_CreateHook(initAddr, &Hook_SteamAPI_Init, reinterpret_cast<LPVOID*>(&fpSteamInit));
+    MH_EnableHook(initAddr);
 }
 
 static void OnDetach()
@@ -54,14 +62,22 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 {
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH:
+            DisableThreadLibraryCalls(hModule);
+
+            FILE *stream;
             if (g_INI.ParseError() < 0) {
-                FILE *stream;
                 freopen_s(&stream, "mod_engine.log", "w", stdout);
                 std::cout << "Can't load 'mod_engine.ini'" << std::endl;
                 return FALSE;
             }
 
-            DisableThreadLibraryCalls(hModule);
+            if (g_INI.GetBoolean("logs", "console", false)) {
+                AllocConsole();
+                freopen_s(&stream, "CONOUT$", "w", stdout);
+            } else {
+                freopen_s(&stream, "mod_engine.log", "w", stdout);
+            }
+
             OnAttach();
             break;
         case DLL_PROCESS_DETACH:
