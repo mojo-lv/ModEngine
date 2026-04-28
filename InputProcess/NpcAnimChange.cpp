@@ -5,6 +5,9 @@
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
 
+typedef void(*t_sub_140b574b0)(uintptr_t, uintptr_t);
+static t_sub_140b574b0 fp_sub_140b574b0 = nullptr;
+
 typedef uintptr_t(*t_sub_140b45440)(uintptr_t);
 static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 
@@ -139,6 +142,15 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
     return fp_sub_140b45440(arg1);
 }
 
+void hook_sub_140b574b0(uintptr_t arg1, uintptr_t arg2)
+{
+    uintptr_t npc = *(uintptr_t*)(arg1 + 0x10);
+    if (npcSet.count(npc)) {
+        std::cout << *(float*)(**(uintptr_t**)(npc + 0x1ff8) + 0x308) << std::endl;
+        *(float*)(**(uintptr_t**)(npc + 0x1ff8) + 0x308) = 240;
+    }
+}
+
 void EnableNpcAnimChange()
 {
     logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
@@ -168,4 +180,7 @@ void EnableNpcAnimChange()
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x140b574b0), &hook_sub_140b574b0, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_140b574b0));
 }
