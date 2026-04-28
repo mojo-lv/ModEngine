@@ -3,12 +3,8 @@
 struct NpcAnimState {
     static constexpr uint32_t INVALID_ANIM = 0xFFFFFFFF;
     uintptr_t npc = 0;
-    std::vector<uint32_t>* animsPtr = nullptr;
-    uint32_t animIndex = 0;
     uint32_t lastAnim = INVALID_ANIM;
-    uint32_t vKey = 0;
-    bool blockCombo = false;
-    bool animApplied = false;
+    bool inherit = false;
 };
 
 struct NpcAnimConfig {

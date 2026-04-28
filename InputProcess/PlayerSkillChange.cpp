@@ -35,7 +35,7 @@ static void LoadSkillConfig()
             vKey = std::stoul(configKey.substr(2));
         }
 
-        std::string valStr = config.GetString("", configKey, "");
+        std::string valStr = config.GetString("", configKey, "0");
         if (!valStr.empty()) {
             valSize = valStr.size();
             start = 0;
