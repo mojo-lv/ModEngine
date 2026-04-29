@@ -176,7 +176,10 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
 {
     uintptr_t npc = *(uintptr_t*)(*(uintptr_t*)(arg1 + 0x20) + 0x10);
     if (IsNpcCtrl(npc)) {
-        return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
+        uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x10);
+        uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
+        uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
+        if (curAnim > 9999) return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
     }
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
 }
