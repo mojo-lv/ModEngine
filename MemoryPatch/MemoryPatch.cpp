@@ -141,7 +141,11 @@ void PatchNpcLooKHook(uintptr_t hookAddress)
     std::vector<uint8_t> bytes = {0x4c, 0x8b, 0x40, 0x10, 0x49, 0x8b, 0x80};
     PatchMemory(0x1407daa6d, bytes);
 
-    // nop; call
-    bytes = {0x90, 0x90, 0x90, 0x90, 0xE8};
-    PatchMemory(hookAddress - 4, bytes);
+    // call
+    bytes = {0xE8};
+    PatchMemory(hookAddress, bytes);
+
+    // mov rdx, rax; nop
+    bytes = {0x48, 0x89, 0xc2, 0x90};
+    PatchMemory(hookAddress + 5, bytes);
 }

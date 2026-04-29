@@ -4,7 +4,11 @@
 
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
-constexpr uintptr_t HOOK_NPC_LOOK_ADDR = 0x1407daac0;
+constexpr uintptr_t HOOK_NPC_LOOK_ADDR = 0x1407daabc;
+
+typedef uintptr_t(*t_fma)(uintptr_t, uintptr_t, uintptr_t, uintptr_t);
+static t_fma fp_sub_1407dac80 = reinterpret_cast<t_fma>(0x1407dac80);
+static t_fma fp_sub_1407daf30 = nullptr;
 
 typedef uintptr_t(*t_sub_140b45440)(uintptr_t);
 static t_sub_140b45440 fp_sub_140b45440 = nullptr;
@@ -16,8 +20,8 @@ static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 static uintptr_t npcList[NPC_MAX];
 static int npcIndex = 0;
 
-static float animSpeed = 1.0;
-static float animTurn = 250;
+static float animSpeed = 1;
+static float animTurn = 200;
 static bool logAnim = false;
 
 static NpcAnimState animState;
@@ -27,6 +31,8 @@ extern INIReader g_INI;
 
 static bool IsNpcCtrl(uintptr_t npc)
 {
+    if (npcList[npcIndex] == 0) return false;
+
     for (int i = 0; i < NPC_MAX; i++) {
         if (npcList[i] == npc) {
             return true;
@@ -152,14 +158,27 @@ uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
     return result;
 }
 
-void HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
+float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
 {
     *arg2 = *(float*)(arg1 + 0x308);
     if ((*arg2 == 0) && IsNpcCtrl(arg3)) {
-        *arg2 = animTurn;
+        uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
+        uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
+        uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
+        if (curAnim > 9999) *arg2 = animTurn;
     }
 
     *(arg2 + 1) = *arg2;
+    return arg2;
+}
+
+uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+{
+    uintptr_t npc = *(uintptr_t*)(*(uintptr_t*)(arg1 + 0x20) + 0x10);
+    if (IsNpcCtrl(npc)) {
+        return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
+    }
+    return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
 }
 
 uintptr_t hook_sub_140b45440(uintptr_t arg1)
@@ -205,6 +224,8 @@ void EnableNpcAnimChange()
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LOOK_ADDR), &HookNpcLook, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LOOK_ADDR));
         PatchNpcLooKHook(HOOK_NPC_LOOK_ADDR);
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
     }
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
