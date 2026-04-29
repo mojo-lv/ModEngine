@@ -7,3 +7,4 @@ void PatchDebugNPCHook(uintptr_t hookAddress);
 void PatchNPCDamageHook(uintptr_t hookAddress);
 void PatchNpcAnimHook(uintptr_t hookAddress);
 void PatchNpcAnimCancelHook(uintptr_t hookAddress);
+void PatchNpcLooKHook(uintptr_t hookAddress);
