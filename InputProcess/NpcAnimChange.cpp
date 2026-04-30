@@ -19,6 +19,7 @@ static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 #define NPC_MAX 3
 static uintptr_t npcList[NPC_MAX];
 static int npcIndex = 0;
+static uintptr_t npcPlayer = 0;
 
 static float animSpeed = 1;
 static float animTurn = 200;
@@ -69,15 +70,14 @@ static void LoadAnimConfig()
 
 uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
 {
+    animState.np = 0;
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x300);
-    if (npcList[npcIndex] != npc) {
-        npcIndex = (npcIndex + 1) % NPC_MAX;
-        for (int i = 0; i < NPC_MAX; i++) {
-            if (npcList[i] == npc) {
-                npcIndex = i;
-            }
+    if (npcPlayer != npc) {
+        if (!IsNpcCtrl(npc)) {
+            npcIndex = (npcIndex + 1) % NPC_MAX;
+            npcList[npcIndex] = npc;
         }
-        npcList[npcIndex] = npc;
+        npcPlayer = npc;
         animState.lastAnim = NpcAnimState::INVALID_ANIM;
         animState.inherit = false;
     }
@@ -162,6 +162,11 @@ float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
 {
     *arg2 = *(float*)(arg1 + 0x308);
     if ((*arg2 == 0) && IsNpcCtrl(arg3)) {
+        if ((npcPlayer == arg3) && (animState.np++ > NpcAnimState::NP_MAX)) {
+            npcPlayer = 0;
+            *(uint8_t*)(arg3 + 0x1070) = 0;
+        }
+
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
@@ -176,10 +181,7 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
 {
     uintptr_t npc = *(uintptr_t*)(*(uintptr_t*)(arg1 + 0x20) + 0x10);
     if (IsNpcCtrl(npc)) {
-        uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x10);
-        uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
-        uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
-        if (curAnim > 9999) return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
+        return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
     }
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
 }

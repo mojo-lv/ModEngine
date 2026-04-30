@@ -2,6 +2,8 @@
 
 struct NpcAnimState {
     static constexpr uint32_t INVALID_ANIM = 0xFFFFFFFF;
+    static constexpr uint8_t NP_MAX = 9;
+    uint32_t np = 0;
     uint32_t lastAnim = INVALID_ANIM;
     bool inherit = false;
 };
