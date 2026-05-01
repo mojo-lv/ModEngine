@@ -211,12 +211,9 @@ void EnablePlayerSkillChange()
         skillConfig.lastWriteTime = fs::last_write_time(skillConfig.path);
         skillConfig.reload = reload;
         LoadSkillConfig();
-    } else {
-        skillConfig.reload = false;
-    }
-
-    MH_CreateHook(reinterpret_cast<LPVOID>(0x140B2C190), &hook_sub_140B2C190, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140B2C190), &hook_sub_140B2C190, 
                         reinterpret_cast<LPVOID*>(&fp_sub_140B2C190));
+    }
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140dd9c60), &hook_sub_140dd9c60, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140dd9c60));
