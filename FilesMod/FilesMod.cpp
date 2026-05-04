@@ -87,11 +87,8 @@ size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
 
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
 {
-    WCHAR* path = p1->path;
-    std::wcout << path;
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
     WCHAR* path = p1->path;
-    std::wcout << " ---- " << path << std::endl;
     UINT64 len = p1->length;
     if (len > 7 && path[6] == L'/' && path[5] == L':' && path[0] == L'd') {
         // data1:/
@@ -106,7 +103,7 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
         } else if ((len == 43) && !g_cutscene_path.empty()) {
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
-            if (path_view.compare(28, 15, L"cutscenebnd.dcx") == 0) {
+            if (path_view.compare(path_view.length() - 15, 15, L"cutscenebnd.dcx") == 0) {
                 wcsncpy_s(path, len, g_cutscene_path_temp.c_str(), g_cutscene_path_temp.length());
             }
         }
@@ -119,25 +116,23 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
     LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes,
     HANDLE hTemplateFile)
 {
-    if (lpFileName) {
-        std::wstring_view path_view(lpFileName);
-        if ((path_view.length() > g_cur_len + 5) && (path_view[g_cur_len + 1] == L'<') && (path_view[g_cur_len + 4] == L'>')) {
-            std::wstring index_key(path_view.substr(g_cur_len + 2, 2));
-            auto it = index_to_mod.find(index_key);
-            if (it != index_to_mod.end()) {
-                std::wstring new_path = it->second;
-                new_path.append(path_view.substr(g_cur_len + 5));
-                return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-                    dwFlagsAndAttributes, hTemplateFile);
-            } else if ((path_view[g_cur_len + 2] == L'c') && (path_view[g_cur_len + 3] == L's')) {
-                return fpCreateFileW(g_cutscene_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-                    dwFlagsAndAttributes, hTemplateFile);
-            }
-        } else if (!g_save_path.empty()) {
-            if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
-                return fpCreateFileW(g_save_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-                    dwFlagsAndAttributes, hTemplateFile);
-            }
+    std::wstring_view path_view(lpFileName);
+    if ((path_view.length() > g_cur_len + 5) && (path_view[g_cur_len + 1] == L'<') && (path_view[g_cur_len + 4] == L'>')) {
+        std::wstring index_key(path_view.substr(g_cur_len + 2, 2));
+        auto it = index_to_mod.find(index_key);
+        if (it != index_to_mod.end()) {
+            std::wstring new_path = it->second;
+            new_path.append(path_view.substr(g_cur_len + 5));
+            return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
+                dwFlagsAndAttributes, hTemplateFile);
+        } else if ((path_view[g_cur_len + 2] == L'c') && (path_view[g_cur_len + 3] == L's')) {
+            return fpCreateFileW(g_cutscene_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
+                dwFlagsAndAttributes, hTemplateFile);
+        }
+    } else if (!g_save_path.empty()) {
+        if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
+            return fpCreateFileW(g_save_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
+                dwFlagsAndAttributes, hTemplateFile);
         }
     }
 
