@@ -87,8 +87,11 @@ size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
 
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
 {
+    WCHAR* path = p1->path;
+    std::wcout << path;
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
     WCHAR* path = p1->path;
+    std::wcout << " ---- " << path << std::endl;
     UINT64 len = p1->length;
     if (len > 7 && path[6] == L'/' && path[5] == L':' && path[0] == L'd') {
         // data1:/
