@@ -129,7 +129,9 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
             return fpCreateFileW(g_cutscene_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                 dwFlagsAndAttributes, hTemplateFile);
         }
-    } else if (!g_save_path.empty()) {
+    }
+
+    if (!g_save_path.empty()) {
         if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
             return fpCreateFileW(g_save_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                 dwFlagsAndAttributes, hTemplateFile);
