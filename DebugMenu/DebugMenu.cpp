@@ -12,6 +12,7 @@ static uintptr_t* pNPCList = reinterpret_cast<uintptr_t*>(0x143d547d8);
 static uintptr_t* pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 
 std::vector<MenuEntry> g_menuList;
+int g_menuSelectedIndex = -1;
 FontConfig g_fontConfig;
 bool g_log_debug_menu = false;
 
@@ -47,6 +48,13 @@ void HookedDebugMenu(void* qUnkClass, float* pLocation, wchar_t* pwString)
     entry.fY = pLocation[1];
     entry.text = WideCharToUTF8(pwString);
     g_menuList.push_back(entry);
+    if (pwString != nullptr) {
+        if ((pwString[0] == 0x25C6 || pwString[0] == 0x25C7) && pwString[1] == L'\0') {
+            g_menuSelectedIndex = g_menuList.size();
+        } else if ((pwString[0] == 0x25A0 || pwString[0] == 0x25A1) && pwString[1] == L'[') {
+            g_menuSelectedIndex = g_menuList.size() - 1;
+        }
+    }
 }
 
 void HookedDebugNPC()

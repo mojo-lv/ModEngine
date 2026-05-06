@@ -3,8 +3,6 @@
 #include "Graphics.h"
 
 #define LOG_KEY 'P'
-const std::string diamond_black = "\xE2\x97\x86";
-const std::string diamond_white = "\xE2\x97\x87";
 
 static GraphicsContext gCtx;
 
@@ -24,34 +22,19 @@ static void DrawDebugMenu()
         last_state = state;
     }
 
-    bool highlightNext = false;
-    bool found = false;
-    for (auto& entry : g_menuList) {
+    for (int i = 0; i < g_menuList.size(); ++i) {
         if (log_triggered) {
-            std::cout << "[debug_menu] " << entry.text << std::endl;
+            std::cout << "[debug_menu] " << g_menuList[i].text << std::endl;
         }
 
-        if (highlightNext && !found) {
-            ImGui::GetWindowDrawList()->AddText(
-                gCtx.pMenuFont, g_fontConfig.size,
-                ImVec2(entry.fX, entry.fY),
-                ImColor(g_fontConfig.color),
-                entry.text.c_str(), 0, 0.0f, 0);
-            found = true;
-            highlightNext = false;
-        } else {
-            ImGui::GetWindowDrawList()->AddText(
-                gCtx.pMenuFont, g_fontConfig.size,
-                ImVec2(entry.fX, entry.fY),
-                ImColor(IM_COL32_WHITE),
-                entry.text.c_str(), 0, 0.0f, 0);
-        }
-
-        if (!found && (entry.text == diamond_black || entry.text == diamond_white)) {
-            highlightNext = true;
-        }
+        ImGui::GetWindowDrawList()->AddText(
+            gCtx.pMenuFont, g_fontConfig.size,
+            ImVec2(g_menuList[i].fX, g_menuList[i].fY),
+            ImColor(g_menuSelectedIndex == i ? g_fontConfig.color : IM_COL32_WHITE),
+            g_menuList[i].text.c_str(), 0, 0.0f, 0);
     }
     g_menuList.clear();
+    g_menuSelectedIndex = -1;
 
     ImGui::End();
 }
