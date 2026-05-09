@@ -3,17 +3,11 @@
 #include "MemoryPatch/MemoryPatch.h"
 
 constexpr uintptr_t HOOK_DBG_CAM_ADDR = 0x14083bebf;
-constexpr uintptr_t D2D_MAPPING_ADDR = 0x142600d50;
-constexpr uintptr_t D2A_MAPPING_ADDR = 0x142600bc0;
-constexpr uintptr_t A2A_MAPPING_ADDR = 0x142600e40;
-
-typedef int64_t(*t_A2AMapping)(uintptr_t, int32_t, int32_t, int32_t);
-static t_A2AMapping fp_A2AMapping = reinterpret_cast<t_A2AMapping>(A2A_MAPPING_ADDR);
 
 typedef int64_t(*t_D2AMapping)(
     uintptr_t arg1, int32_t arg2, int32_t arg3, float arg4,
     int32_t arg5, int64_t arg6);
-static t_D2AMapping fp_D2AMapping = reinterpret_cast<t_D2AMapping>(D2A_MAPPING_ADDR);
+static t_D2AMapping fp_D2AMapping = reinterpret_cast<t_D2AMapping>(0x142600bc0);
 
 typedef uintptr_t(*t_D2DMapping)(uintptr_t, uint32_t, uint32_t, uint32_t, uintptr_t);
 static t_D2DMapping fp_D2DMapping = nullptr;
@@ -48,9 +42,6 @@ int64_t hook_sub_141166360(uintptr_t arg1)
     fp_D2AMapping(arg1, 0x318, 0xbe, 1.0f, 0, result); // up
     fp_D2AMapping(arg1, 0x318, 0xc3, -1.0f, 0, result); // down
 
-    fp_A2AMapping(arg1, 0x317, 0, 0); // mouse horizontal
-    fp_D2AMapping(arg1, 0x318, 0, 1.0f, 0, result); // LMB
-    fp_D2AMapping(arg1, 0x318, 1, -1.0f, 0, result); // RMB
     return result;
 }
 
@@ -111,7 +102,7 @@ void EnableKeyRemap()
     }
 
     if (logKeyRemap || !keyRemapData.empty()) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(D2D_MAPPING_ADDR), &hook_D2DMapping,
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x142600d50), &hook_D2DMapping,
                         reinterpret_cast<LPVOID*>(&fp_D2DMapping));
     }
 
