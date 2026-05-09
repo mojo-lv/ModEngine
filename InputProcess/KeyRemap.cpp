@@ -1,16 +1,74 @@
 #include "pch.h"
 #include "KeyRemap.h"
+#include "MemoryPatch/MemoryPatch.h"
 
-typedef void*(*t_sub_142600d50)(void*, uint32_t, uint32_t, void*);
-static t_sub_142600d50 fp_sub_142600d50 = nullptr;
+constexpr uintptr_t HOOK_DBG_CAM_ADDR = 0x14083bebf;
+
+typedef int64_t(*t_D2AMapping)(
+    uintptr_t arg1, int32_t arg2, int32_t arg3, float arg4,
+    int32_t arg5, int64_t arg6);
+static t_D2AMapping fp_D2AMapping = reinterpret_cast<t_D2AMapping>(0x142600bc0);
+
+typedef uintptr_t(*t_D2DMapping)(uintptr_t, uint32_t, uint32_t, uint32_t, uintptr_t);
+static t_D2DMapping fp_D2DMapping = nullptr;
+
+typedef int64_t(*t_sub_141166360)(uintptr_t);
+static t_sub_141166360 fp_sub_141166360 = nullptr;
 
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> keyRemapData;
-
 static bool logKeyRemap = false;
-
 extern INIReader g_INI;
 
-void* hook_sub_142600d50(void* arg1, uint32_t arg2, uint32_t arg3, void* arg4)
+static uint32_t slowKey = 0;
+static uint32_t fastKey = 0;
+static uint32_t upKey = 0;
+static uint32_t downKey = 0;
+
+int64_t hook_sub_141166360(uintptr_t arg1)
+{
+    int64_t result = fp_sub_141166360(arg1);
+    if (slowKey) fp_D2DMapping(arg1, 0x1c4, slowKey, 0, result);
+    if (fastKey) fp_D2DMapping(arg1, 0x1c3, fastKey, 0, result);
+    if (upKey) fp_D2AMapping(arg1, 0x315, upKey, 1.0f, 0, result);
+    if (downKey) fp_D2AMapping(arg1, 0x316, downKey, 1.0f, 0, result);
+
+    fp_D2AMapping(arg1, 0x314, 0x65, 1.0f, 0, result); // D
+    fp_D2AMapping(arg1, 0x314, 0x63, -1.0f, 0, result); // A
+    fp_D2AMapping(arg1, 0x313, 0x56, 1.0f, 0, result); // W
+    fp_D2AMapping(arg1, 0x313, 0x64, -1.0f, 0, result); // S
+
+    fp_D2AMapping(arg1, 0x317, 0xc1, 1.0f, 0, result); // right
+    fp_D2AMapping(arg1, 0x317, 0xc0, -1.0f, 0, result); // left
+    fp_D2AMapping(arg1, 0x318, 0xbe, 1.0f, 0, result); // up
+    fp_D2AMapping(arg1, 0x318, 0xc3, -1.0f, 0, result); // down
+
+    return result;
+}
+
+int64_t HookedDbgCam(uintptr_t arg1)
+{
+    static float* playerSpeedPtr = (float*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
+        *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x1ff8) + 0x28) + 0xD00);
+    static byte* freezePtr = (byte*)0x143d7acb2;
+    static const uint8_t camGroup[4] = {0, 1, 1, 0};
+    static uint32_t lastCamMode = 0;
+
+    uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
+    *freezePtr = (camMode == 1) ? 1 : 2;
+
+    if (camGroup[camMode] != camGroup[lastCamMode]) {
+        if (camGroup[camMode]) {
+            *playerSpeedPtr = 0;
+        } else {
+            *playerSpeedPtr = 1.0f;
+        }
+    }
+
+    lastCamMode = camMode;
+    return camMode - 1;
+}
+
+uintptr_t hook_D2DMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uintptr_t arg5)
 {
     uint32_t key = arg3;
     auto it = keyRemapData.find({arg2, arg3});
@@ -23,11 +81,16 @@ void* hook_sub_142600d50(void* arg1, uint32_t arg2, uint32_t arg3, void* arg4)
         std::cout << "[key_remap] " << std::hex << arg2 << " " << arg3 << std::endl;
     }
 
-    return fp_sub_142600d50(arg1, arg2, key, arg4);
+    return fp_D2DMapping(arg1, arg2, key, arg4, arg5);
 }
 
 void EnableKeyRemap()
 {
+    bool tabCam = g_INI.GetBoolean("free_camera", "tab", false);
+    slowKey = g_INI.GetUnsigned("free_camera", "move_slow", 0);
+    fastKey = g_INI.GetUnsigned("free_camera", "move_fast", 0);
+    upKey = g_INI.GetUnsigned("free_camera", "move_up", 0);
+    downKey = g_INI.GetUnsigned("free_camera", "move_down", 0);
     logKeyRemap = g_INI.GetBoolean("logs", "key_remap", false);
 
     size_t pos;
@@ -41,7 +104,15 @@ void EnableKeyRemap()
     }
 
     if (logKeyRemap || !keyRemapData.empty()) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(0x142600d50), &hook_sub_142600d50,
-                        reinterpret_cast<LPVOID*>(&fp_sub_142600d50));
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x142600d50), &hook_D2DMapping,
+                        reinterpret_cast<LPVOID*>(&fp_D2DMapping));
     }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR), &HookedDbgCam, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR));
+        PatchDbgCamHook(HOOK_DBG_CAM_ADDR, tabCam);
+    }
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x141166360), &hook_sub_141166360,
+                        reinterpret_cast<LPVOID*>(&fp_sub_141166360));
 }
