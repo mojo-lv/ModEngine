@@ -47,21 +47,19 @@ int64_t hook_sub_141166360(uintptr_t arg1)
 
 int64_t HookedDbgCam(uintptr_t arg1)
 {
-    static float* playerSpeedPtr = (float*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
-        *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x1ff8) + 0x28) + 0xD00);
-    static byte* freezePtr = (byte*)0x143d7acb2;
-    static const uint8_t camGroup[4] = {0, 1, 1, 0};
+    static constexpr uint8_t camGroup[4] = {0, 1, 1, 0};
     static uint32_t lastCamMode = 0;
 
     uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
-    *freezePtr = (camMode == 1) ? 1 : 2;
+    *(uint8_t*)0x143d7acb2 = (camMode == 1) ? 1 : 2;
 
     if (camGroup[camMode] != camGroup[lastCamMode]) {
-        if (camGroup[camMode]) {
-            *playerSpeedPtr = 0;
-        } else {
-            *playerSpeedPtr = 1.0f;
-        }
+        float* playerSpeedPtr = (float*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x1ff8) + 0x28) + 0xD00);
+        *playerSpeedPtr = camGroup[camMode] ? 0.f : 1.f;
     }
 
     lastCamMode = camMode;
