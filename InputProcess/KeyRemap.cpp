@@ -3,14 +3,16 @@
 #include "MemoryPatch/MemoryPatch.h"
 
 constexpr uintptr_t HOOK_DBG_CAM_ADDR = 0x14083bebf;
+constexpr uintptr_t D2A_MAPPING_ADDR = 0x142600bc0;
+constexpr uintptr_t D2D_MAPPING_ADDR = 0x142600d50;
 
 typedef int64_t(*t_D2AMapping)(
     uintptr_t arg1, int32_t arg2, int32_t arg3, float arg4,
     int32_t arg5, int64_t arg6);
-static t_D2AMapping fp_D2AMapping = reinterpret_cast<t_D2AMapping>(0x142600bc0);
+static t_D2AMapping fp_D2AMapping = reinterpret_cast<t_D2AMapping>(D2A_MAPPING_ADDR);
 
 typedef uintptr_t(*t_D2DMapping)(uintptr_t, uint32_t, uint32_t, uint32_t, uintptr_t);
-static t_D2DMapping fp_D2DMapping = nullptr;
+static t_D2DMapping fp_D2DMapping = reinterpret_cast<t_D2DMapping>(D2D_MAPPING_ADDR);
 
 typedef int64_t(*t_sub_141166360)(uintptr_t);
 static t_sub_141166360 fp_sub_141166360 = nullptr;
@@ -104,7 +106,7 @@ void EnableKeyRemap()
     }
 
     if (logKeyRemap || !keyRemapData.empty()) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(0x142600d50), &hook_D2DMapping,
+        MH_CreateHook(reinterpret_cast<LPVOID>(D2D_MAPPING_ADDR), &hook_D2DMapping,
                         reinterpret_cast<LPVOID*>(&fp_D2DMapping));
     }
 
