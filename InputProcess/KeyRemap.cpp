@@ -64,6 +64,12 @@ int64_t HookedDbgCam(uintptr_t arg1)
             *(uintptr_t*)(
             *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x1ff8) + 0x28) + 0xD00);
         *playerSpeedPtr = (camMode == 2) ? 0.f : 1.f;
+
+        uint8_t* playerNoMovePtr = (uint8_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x50) + 0x192);
+        *playerNoMovePtr = (camMode == 2) ? 1 : 0;
     }
 
     lastCamMode = camMode;
