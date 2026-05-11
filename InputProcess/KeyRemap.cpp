@@ -51,25 +51,26 @@ int64_t HookedDbgCam(uintptr_t arg1)
 {
     static uint8_t* freezePtr = (uint8_t*)0x143d7acb2;
     static uint32_t lastCamMode = 0;
+    static uint8_t mask0 = 0;
+    static uint8_t* maskPtr = nullptr;
 
     uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
+    if ((camMode != 0) && (lastCamMode == 0)) {
+        maskPtr = (uint8_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)(
+            *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x50) + 0x10) + 0x1f40);
+        mask0 = *maskPtr & 0xE0;
+    }
+
     if ((camMode == 1) != (lastCamMode == 1)) {
         *freezePtr = (camMode == 1) ? 1 : 2;
     }
 
     if ((camMode == 2) != (lastCamMode == 2)) {
-        float* playerSpeedPtr = (float*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x1ff8) + 0x28) + 0xD00);
-        *playerSpeedPtr = (camMode == 2) ? 0.f : 1.f;
-
-        uint8_t* playerNoMovePtr = (uint8_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x50) + 0x192);
-        *playerNoMovePtr = (camMode == 2) ? 1 : 0;
+        *maskPtr &= 0x1F;
+        *maskPtr |= (camMode == 2) ? 0xE0 : mask0;
     }
 
     lastCamMode = camMode;
