@@ -74,6 +74,12 @@ int64_t HookedDbgCam(uintptr_t arg1)
         } else {
             *maskPtr = (*maskPtr & 0x1F) | lastMask;
         }
+    } else if (camMode == 2) {
+        uint8_t maskBits = *maskPtr & 0xE0;
+        if (maskBits != 0xE0) {
+            lastMask = maskBits;
+            *maskPtr |= 0xE0;
+        }
     }
 
     lastCamMode = camMode;
