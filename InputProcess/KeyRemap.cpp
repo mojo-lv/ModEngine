@@ -51,7 +51,7 @@ int64_t HookedDbgCam(uintptr_t arg1)
 {
     static uint8_t* freezePtr = (uint8_t*)0x143d7acb2;
     static uint32_t lastCamMode = 0;
-    static uint8_t mask0 = 0;
+    static uint8_t lastMask = 0;
     static uint8_t* maskPtr = nullptr;
 
     uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
@@ -61,7 +61,6 @@ int64_t HookedDbgCam(uintptr_t arg1)
             *(uintptr_t*)(
             *(uintptr_t*)(
             *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x50) + 0x10) + 0x1f40);
-        mask0 = *maskPtr & 0xE0;
     }
 
     if ((camMode == 1) != (lastCamMode == 1)) {
@@ -69,8 +68,12 @@ int64_t HookedDbgCam(uintptr_t arg1)
     }
 
     if ((camMode == 2) != (lastCamMode == 2)) {
-        *maskPtr &= 0x1F;
-        *maskPtr |= (camMode == 2) ? 0xE0 : mask0;
+        if (camMode == 2) {
+            lastMask = *maskPtr & 0xE0;
+            *maskPtr |= 0xE0; // No Move/Attack/Hit
+        } else {
+            *maskPtr = (*maskPtr & 0x1F) | lastMask;
+        }
     }
 
     lastCamMode = camMode;
