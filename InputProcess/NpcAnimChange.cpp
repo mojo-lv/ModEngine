@@ -21,8 +21,8 @@ static uintptr_t npcList[NPC_MAX];
 static int npcIndex = 0;
 static uintptr_t npcPlayer = 0;
 
-static float animSpeed = 1;
-static float animTurn = 200;
+static float animSpeed = 0;
+static float animTurnSpeed = 200;
 static bool logAnim = false;
 
 static NpcAnimState animState;
@@ -40,12 +40,6 @@ static bool IsNpcCtrl(uintptr_t npc)
         }
     }
     return false;
-}
-
-static bool IsKeyDown(int key)
-{
-    if (key >= 256) return false;
-    return (GetAsyncKeyState(key) & 0x8000) != 0;
 }
 
 static void LoadAnimConfig()
@@ -170,7 +164,7 @@ float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
-        if (curAnim > 9999) *arg2 = animTurn;
+        if (curAnim > 9999) *arg2 = animTurnSpeed;
     }
 
     *(arg2 + 1) = *arg2;
@@ -201,8 +195,7 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
 void EnableNpcAnimChange()
 {
     logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
-    animSpeed = g_INI.GetReal("npc_anim_change", "anim_speed", 1.0);
-    animTurn = animTurn * animSpeed;
+    animSpeed = g_INI.GetReal("npc_anim_change", "anim_speed", 0);
     std::string configPath = g_INI.GetString("npc_anim_change", "config_path", "");
     bool reload = g_INI.GetBoolean("npc_anim_change", "config_runtime_reload", false);
 
@@ -233,6 +226,9 @@ void EnableNpcAnimChange()
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
     }
 
-    MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
+    if (animSpeed > 0) {
+        animTurnSpeed = animTurnSpeed * animSpeed;
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
+    }
 }
