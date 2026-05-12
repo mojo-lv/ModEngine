@@ -150,14 +150,9 @@ void PatchNpcLooKHook(uintptr_t hookAddress)
     PatchMemory(hookAddress + 5, bytes);
 }
 
-void PatchDbgCamHook(uintptr_t hookAddress, bool tab)
+void PatchDbgCamHook(uintptr_t hookAddress)
 {
     // mov rcx, rbx; call
     std::vector<uint8_t> bytes = {0x48, 0x8B, 0xCB, 0xE8};
     PatchMemory(hookAddress - 3, bytes);
-
-    if (tab) {
-        bytes = {0xE8, 0x99, 0x06, 0xDB, 0x01};
-        PatchMemory(hookAddress - 86, bytes);
-    }
 }

@@ -8,4 +8,4 @@ void PatchNPCDamageHook(uintptr_t hookAddress);
 void PatchNpcAnimHook(uintptr_t hookAddress);
 void PatchNpcAnimCancelHook(uintptr_t hookAddress);
 void PatchNpcLooKHook(uintptr_t hookAddress);
-void PatchDbgCamHook(uintptr_t hookAddress, bool tab);
+void PatchDbgCamHook(uintptr_t hookAddress);
