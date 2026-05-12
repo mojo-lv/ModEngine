@@ -5,11 +5,13 @@
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
 constexpr uintptr_t HOOK_DEBUG_NPC_ADDR = 0x140614f13;
 constexpr uintptr_t HOOK_NPC_DAMAGE_ADDR = 0x140b6a13d;
+constexpr uintptr_t HOOK_DBG_CAM_ADDR = 0x14083bebf;
 
 typedef uintptr_t(*t_addNPC)(uintptr_t, uintptr_t*);
 static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
 static uintptr_t* pNPCList = reinterpret_cast<uintptr_t*>(0x143d547d8);
 static uintptr_t* pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
+static uint8_t* freezePtr = reinterpret_cast<uint8_t*>(0x143d7acb2);
 
 std::vector<MenuEntry> g_menuList;
 int g_menuSelectedIndex = -1;
@@ -81,6 +83,41 @@ uint16_t HookedNPCDamage(uint16_t arg1)
     return arg1;
 }
 
+int64_t HookedDbgCam(uintptr_t arg1)
+{
+    static uint32_t lastCamMode = 0;
+    static uint8_t lastMask = 0;
+    static uint8_t* maskPtr = nullptr;
+
+    uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
+    if ((camMode != 0) && (lastCamMode == 0)) {
+        maskPtr = (uint8_t*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
+                    *pWorldChrMan + 0x88) + 0x50) + 0x10) + 0x1f40);
+    }
+
+    if ((camMode == 1) != (lastCamMode == 1)) {
+        *freezePtr = (camMode == 1) ? 1 : 2;
+    }
+
+    if ((camMode == 2) != (lastCamMode == 2)) {
+        if (camMode == 2) {
+            lastMask = *maskPtr & 0xE0;
+            *maskPtr |= 0xE0; // No Move/Attack/Hit
+        } else {
+            *maskPtr = (*maskPtr & 0x1F) | lastMask;
+        }
+    } else if (camMode == 2) {
+        uint8_t maskBits = *maskPtr & 0xE0;
+        if (maskBits != 0xE0) {
+            lastMask = 0;
+            *maskPtr |= 0xE0;
+        }
+    }
+
+    lastCamMode = camMode;
+    return camMode - 1;
+}
+
 void EnableDebugMenu()
 {
     g_log_debug_menu = g_INI.GetBoolean("logs", "debug_menu", false);
@@ -119,5 +156,10 @@ void EnableDebugMenu()
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR), &HookedNPCDamage, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR));
         PatchNPCDamageHook(HOOK_NPC_DAMAGE_ADDR);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR), &HookedDbgCam, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR));
+        PatchDbgCamHook(HOOK_DBG_CAM_ADDR);
     }
 }

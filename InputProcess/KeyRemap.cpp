@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "KeyRemap.h"
-#include "MemoryPatch/MemoryPatch.h"
 
-constexpr uintptr_t HOOK_DBG_CAM_ADDR = 0x14083bebf;
 constexpr uintptr_t HOOK_D2D_MAPPING_ADDR = 0x142600d50;
 constexpr uintptr_t HOOK_A2A_MAPPING_ADDR = 0x142600e40;
 constexpr uintptr_t D2A_MAPPING_ADDR = 0x142600bc0;
@@ -24,45 +22,6 @@ static std::map<std::pair<uint32_t, uint32_t>,
 
 static bool logKeyRemap = false;
 extern INIReader g_INI;
-
-int64_t HookedDbgCam(uintptr_t arg1)
-{
-    static uint8_t* freezePtr = (uint8_t*)0x143d7acb2;
-    static uint32_t lastCamMode = 0;
-    static uint8_t lastMask = 0;
-    static uint8_t* maskPtr = nullptr;
-
-    uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
-    if ((camMode != 0) && (lastCamMode == 0)) {
-        maskPtr = (uint8_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)(
-            *(uintptr_t*)0x143d7a1e0 + 0x88) + 0x50) + 0x10) + 0x1f40);
-    }
-
-    if ((camMode == 1) != (lastCamMode == 1)) {
-        *freezePtr = (camMode == 1) ? 1 : 2;
-    }
-
-    if ((camMode == 2) != (lastCamMode == 2)) {
-        if (camMode == 2) {
-            lastMask = *maskPtr & 0xE0;
-            *maskPtr |= 0xE0; // No Move/Attack/Hit
-        } else {
-            *maskPtr = (*maskPtr & 0x1F) | lastMask;
-        }
-    } else if (camMode == 2) {
-        uint8_t maskBits = *maskPtr & 0xE0;
-        if (maskBits != 0xE0) {
-            lastMask = 0;
-            *maskPtr |= 0xE0;
-        }
-    }
-
-    lastCamMode = camMode;
-    return camMode - 1;
-}
 
 int64_t hook_D2DMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uintptr_t arg5)
 {
@@ -134,10 +93,5 @@ void EnableKeyRemap()
     if (logKeyRemap || !A2ARemapData.empty()) {
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_A2A_MAPPING_ADDR), &hook_A2AMapping,
                         reinterpret_cast<LPVOID*>(&fp_A2AMapping));
-    }
-
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR), &HookedDbgCam, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR));
-        PatchDbgCamHook(HOOK_DBG_CAM_ADDR);
     }
 }
