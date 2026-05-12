@@ -16,4 +16,5 @@ extern std::vector<MenuEntry> g_menuList;
 extern int g_menuSelectedIndex;
 extern FontConfig g_fontConfig;
 extern bool g_log_debug_menu;
+extern uint8_t lastMask;
 void EnableDebugMenu();

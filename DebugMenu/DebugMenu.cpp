@@ -17,6 +17,7 @@ std::vector<MenuEntry> g_menuList;
 int g_menuSelectedIndex = -1;
 FontConfig g_fontConfig;
 bool g_log_debug_menu = false;
+uint8_t lastMask = 0;
 
 extern INIReader g_INI;
 
@@ -86,7 +87,6 @@ uint16_t HookedNPCDamage(uint16_t arg1)
 int64_t HookedDbgCam(uintptr_t arg1)
 {
     static uint32_t lastCamMode = 0;
-    static uint8_t lastMask = 0;
     static uint8_t* maskPtr = nullptr;
 
     uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
@@ -109,7 +109,7 @@ int64_t HookedDbgCam(uintptr_t arg1)
     } else if (camMode == 2) {
         uint8_t maskBits = *maskPtr & 0xE0;
         if (maskBits != 0xE0) {
-            lastMask = 0;
+            lastMask &= 0x20;
             *maskPtr |= 0xE0;
         }
     }
