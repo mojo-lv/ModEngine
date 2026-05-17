@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "DebugMenu/DebugMenu.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "NpcAnimChange.h"
 
@@ -75,7 +74,6 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
         npcPlayer = npc;
         animState.lastAnim = NpcAnimState::INVALID_ANIM;
         animState.inherit = false;
-        lastMask |= 0xC0;
     }
 
     uintptr_t base_ptr = *(uintptr_t*)(npc + 0x1ff8);

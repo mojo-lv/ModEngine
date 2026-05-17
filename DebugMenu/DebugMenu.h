@@ -12,9 +12,16 @@ struct MenuEntry {
     std::string text;
 };
 
+struct DbgCamState {
+    uint8_t* playerMaskPtr = nullptr;
+    uintptr_t* npcCtrlBase = nullptr;
+    uintptr_t npcCtrlValue = 0;
+    uint32_t lastCamMode = 0;
+    uint8_t lastMask = 0;
+};
+
 extern std::vector<MenuEntry> g_menuList;
 extern int g_menuSelectedIndex;
 extern FontConfig g_fontConfig;
 extern bool g_log_debug_menu;
-extern uint8_t lastMask;
 void EnableDebugMenu();

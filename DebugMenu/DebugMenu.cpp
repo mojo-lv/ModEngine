@@ -5,19 +5,24 @@
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
 constexpr uintptr_t HOOK_DEBUG_NPC_ADDR = 0x140614f13;
 constexpr uintptr_t HOOK_NPC_DAMAGE_ADDR = 0x140b6a13d;
-constexpr uintptr_t HOOK_DBG_CAM_ADDR = 0x14083bebf;
+constexpr uintptr_t HOOK_DBG_CAM_FREEZE_ADDR = 0x14083bebf;
+constexpr uintptr_t HOOK_DBG_CAM_FREE_T_ADDR = 0x14083b3fc;
+constexpr uintptr_t HOOK_DBG_CAM_FREE_F_ADDR = 0x140a750e8;
+constexpr uintptr_t HOOK_DBG_CAM_NPC_CTRL_ADDR = 0x140a04ac3;
+
+static uintptr_t* const pNPCList = reinterpret_cast<uintptr_t*>(0x143d547d8);
+static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
+static uint8_t* const freezePtr = reinterpret_cast<uint8_t*>(0x143d7acb2);
 
 typedef uintptr_t(*t_addNPC)(uintptr_t, uintptr_t*);
 static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
-static uintptr_t* pNPCList = reinterpret_cast<uintptr_t*>(0x143d547d8);
-static uintptr_t* pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
-static uint8_t* freezePtr = reinterpret_cast<uint8_t*>(0x143d7acb2);
+
+static DbgCamState g_CamState;
 
 std::vector<MenuEntry> g_menuList;
 int g_menuSelectedIndex = -1;
 FontConfig g_fontConfig;
 bool g_log_debug_menu = false;
-uint8_t lastMask = 0;
 
 extern INIReader g_INI;
 
@@ -60,7 +65,7 @@ void HookedDebugMenu(void* qUnkClass, float* pLocation, wchar_t* pwString)
     }
 }
 
-void HookedDebugNPC()
+void HookedDebugNpc()
 {
     uintptr_t* begin = *(uintptr_t**)(*pWorldChrMan + 0x3130);
     uintptr_t* end = *(uintptr_t**)(*pWorldChrMan + 0x3138);
@@ -74,7 +79,7 @@ void HookedDebugNPC()
     }
 }
 
-uint16_t HookedNPCDamage(uint16_t arg1)
+uint16_t HookedNpcDamage(uint16_t arg1)
 {
     if (arg1 == 0x101 || arg1 == 0) {
         return 0;
@@ -84,38 +89,62 @@ uint16_t HookedNPCDamage(uint16_t arg1)
     return arg1;
 }
 
-int64_t HookedDbgCam(uintptr_t arg1)
+int64_t HookedDbgCamFreeze(uint32_t* arg1)
 {
-    static uint32_t lastCamMode = 0;
-    static uint8_t* maskPtr = nullptr;
-
-    uint32_t camMode = *(uint32_t*)(arg1 + 0xe0);
-    if ((camMode != 0) && (lastCamMode == 0)) {
-        maskPtr = (uint8_t*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
+    uint32_t camMode = arg1[0x38];
+    if ((camMode != 0) && (g_CamState.lastCamMode == 0)) {
+        g_CamState.playerMaskPtr = (uint8_t*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
                     *pWorldChrMan + 0x88) + 0x50) + 0x10) + 0x1f40);
     }
 
-    if ((camMode == 1) != (lastCamMode == 1)) {
+    if ((camMode == 1) != (g_CamState.lastCamMode == 1)) {
         *freezePtr = (camMode == 1) ? 1 : 2;
     }
 
-    if ((camMode == 2) != (lastCamMode == 2)) {
+    if ((camMode == 2) != (g_CamState.lastCamMode == 2)) {
         if (camMode == 2) {
-            lastMask = *maskPtr & 0xE0;
-            *maskPtr |= 0xE0; // No Move/Attack/Hit
+            g_CamState.lastMask = *g_CamState.playerMaskPtr & 0xE0;
+            *g_CamState.playerMaskPtr |= 0xE0; // No Move/Attack/Hit
         } else {
-            *maskPtr = (*maskPtr & 0x1F) | lastMask;
+            *g_CamState.playerMaskPtr = (*g_CamState.playerMaskPtr & 0x1F) | g_CamState.lastMask;
         }
     } else if (camMode == 2) {
-        uint8_t maskBits = *maskPtr & 0xE0;
+        uint8_t maskBits = *g_CamState.playerMaskPtr & 0xE0;
         if (maskBits != 0xE0) {
-            lastMask &= 0x20;
-            *maskPtr |= 0xE0;
+            g_CamState.lastMask &= 0x20;
+            *g_CamState.playerMaskPtr |= 0xE0;
         }
     }
 
-    lastCamMode = camMode;
+    g_CamState.lastCamMode = camMode;
     return camMode - 1;
+}
+
+bool HookedDbgCamFree(void* arg1, uint32_t* arg2)
+{
+    uint32_t camMode = arg2[0x38];
+    if (camMode == 0) return false;
+    if (camMode == 3 && g_CamState.playerMaskPtr && ((*g_CamState.playerMaskPtr & 0xC0) == 0xC0)) return false;
+    return true;
+}
+
+uintptr_t HookedDbgCamNpcCtrl(uintptr_t* arg1)
+{
+    uintptr_t& ctrlValue = arg1[0x6b];
+    if (ctrlValue) {
+        g_CamState.lastMask |= 0xC0;
+        if (g_CamState.lastCamMode) {
+            g_CamState.npcCtrlBase = arg1;
+            g_CamState.npcCtrlValue = ctrlValue;
+            ctrlValue = 0;
+        }
+    } else if (!g_CamState.lastCamMode && arg1 == g_CamState.npcCtrlBase) {
+        g_CamState.npcCtrlBase = nullptr;
+        if (g_CamState.playerMaskPtr && ((*g_CamState.playerMaskPtr & 0xC0) == 0xC0)) {
+            ctrlValue = g_CamState.npcCtrlValue;
+        }
+    }
+    return ctrlValue;
 }
 
 void EnableDebugMenu()
@@ -148,18 +177,33 @@ void EnableDebugMenu()
         PatchDebugMenuHook(HOOK_DEBUG_MENU_ADDR);
     }
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR), &HookedDebugNPC, NULL) == MH_OK) {
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR), &HookedDebugNpc, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR));
-        PatchDebugNPCHook(HOOK_DEBUG_NPC_ADDR);
+        PatchDebugNpcHook(HOOK_DEBUG_NPC_ADDR);
     }
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR), &HookedNPCDamage, NULL) == MH_OK) {
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR), &HookedNpcDamage, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR));
-        PatchNPCDamageHook(HOOK_NPC_DAMAGE_ADDR);
+        PatchNpcDamageHook(HOOK_NPC_DAMAGE_ADDR);
     }
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR), &HookedDbgCam, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_ADDR));
-        PatchDbgCamHook(HOOK_DBG_CAM_ADDR);
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREEZE_ADDR), &HookedDbgCamFreeze, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREEZE_ADDR));
+        PatchDbgCamFreezeHook(HOOK_DBG_CAM_FREEZE_ADDR);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREE_T_ADDR), &HookedDbgCamFree, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREE_T_ADDR));
+        PatchDbgCamFreeHook(HOOK_DBG_CAM_FREE_T_ADDR, true);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREE_F_ADDR), &HookedDbgCamFree, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREE_F_ADDR));
+        PatchDbgCamFreeHook(HOOK_DBG_CAM_FREE_F_ADDR, false);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_NPC_CTRL_ADDR), &HookedDbgCamNpcCtrl, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_NPC_CTRL_ADDR));
+        PatchDbgCamNpcCtrlHook(HOOK_DBG_CAM_NPC_CTRL_ADDR);
     }
 }
