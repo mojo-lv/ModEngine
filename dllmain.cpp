@@ -58,6 +58,52 @@ static void OnDetach()
     ShutdownImGui();
 }
 
+static bool LoadConfig(HMODULE hModule) {
+    if (!g_INI.ParseError()) {
+        return true;
+    }
+
+    wchar_t path[MAX_PATH] = {0};
+    DWORD ret = GetModuleFileNameW(hModule, path, MAX_PATH);
+    if (ret == 0 || ret > (MAX_PATH - 15)) {
+        return false;
+    }
+
+    wchar_t* lastBackslash = wcsrchr(path, L'\\');
+    if (!lastBackslash) {
+        return false;
+    }
+
+    wcscpy(lastBackslash + 1, L"mod_engine.ini");
+
+    HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    DWORD fileSize = GetFileSize(hFile, NULL);
+    if (fileSize == INVALID_FILE_SIZE) {
+        CloseHandle(hFile);
+        return false;
+    }
+
+    std::vector<char> buffer(fileSize);
+    DWORD bytesRead = 0;
+    BOOL res = ReadFile(hFile, buffer.data(), fileSize, &bytesRead, NULL);
+    CloseHandle(hFile);
+    if (!res || bytesRead != fileSize) {
+        return false;
+    }
+
+    g_INI = INIReader(buffer.data(), buffer.size());
+    if (g_INI.ParseError()) {
+        return false;
+    }
+
+    return true;
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
     switch (ul_reason_for_call) {
@@ -65,9 +111,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             DisableThreadLibraryCalls(hModule);
 
             FILE *stream;
-            if (g_INI.ParseError() < 0) {
+            if (!LoadConfig(hModule)) {
                 freopen_s(&stream, "mod_engine.log", "w", stdout);
                 std::cout << "Can't load 'mod_engine.ini'" << std::endl;
+                std::cout << g_INI.ParseErrorMessage() << std::endl;
                 return FALSE;
             }
 
