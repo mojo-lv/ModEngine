@@ -59,8 +59,11 @@ static void OnDetach()
 }
 
 static bool LoadConfig(HMODULE hModule) {
-    if (!g_INI.ParseError()) {
+    int error = g_INI.ParseError();
+    if (error == 0) {
         return true;
+    } else if (error > 0) {
+        return false;
     }
 
     char path[MAX_PATH] = {0};
