@@ -63,45 +63,11 @@ static bool LoadConfig(HMODULE hModule) {
         return true;
     }
 
-    wchar_t path[MAX_PATH] = {0};
-    DWORD ret = GetModuleFileNameW(hModule, path, MAX_PATH);
-    if (ret == 0 || ret > (MAX_PATH - 15)) {
-        return false;
-    }
-
-    wchar_t* lastBackslash = wcsrchr(path, L'\\');
-    if (!lastBackslash) {
-        return false;
-    }
-
-    wcscpy(lastBackslash + 1, L"mod_engine.ini");
-
-    HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        return false;
-    }
-
-    DWORD fileSize = GetFileSize(hFile, NULL);
-    if (fileSize == INVALID_FILE_SIZE) {
-        CloseHandle(hFile);
-        return false;
-    }
-
-    std::vector<char> buffer(fileSize);
-    DWORD bytesRead = 0;
-    BOOL res = ReadFile(hFile, buffer.data(), fileSize, &bytesRead, NULL);
-    CloseHandle(hFile);
-    if (!res || bytesRead != fileSize) {
-        return false;
-    }
-
-    g_INI = INIReader(buffer.data(), buffer.size());
-    if (g_INI.ParseError()) {
-        return false;
-    }
-
-    return true;
+    char path[MAX_PATH] = {0};
+    GetModuleFileNameA(hModule, path, MAX_PATH);
+    if (char* lastSlash = strrchr(path, '\\')) *(lastSlash + 1) = '\0';
+    g_INI = INIReader(std::string(path) + "mod_engine.ini");
+    return !g_INI.ParseError();
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
