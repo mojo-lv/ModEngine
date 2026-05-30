@@ -28,25 +28,21 @@ extern INIReader g_INI;
 
 static std::string WideCharToUTF8(const wchar_t* wstr)
 {
-    if (wstr != nullptr) {
-        int wlen = static_cast<int>(wcslen(wstr));
-        if (wlen != 0) {
-            int size_needed = WideCharToMultiByte(
-                CP_UTF8, 0, wstr, wlen,
-                nullptr, 0, nullptr, nullptr);
+    if (!wstr || *wstr == 0) return "";
 
-            if (size_needed > 0) {
-                std::string result(size_needed, 0);
-                int converted_size = WideCharToMultiByte(
-                    CP_UTF8, 0, wstr, wlen,
-                    &result[0], size_needed, nullptr, nullptr);
+    int wlen = static_cast<int>(wcslen(wstr));
+    int size_needed = WideCharToMultiByte(
+        CP_UTF8, 0, wstr, wlen,
+        nullptr, 0, nullptr, nullptr);
+    if (size_needed <= 0) return "";
 
-                if (converted_size == size_needed) return result;
-            }
-        }
-    }
+    std::string result(size_needed, '\0');
+    int converted_size = WideCharToMultiByte(
+        CP_UTF8, 0, wstr, wlen,
+        result.data(), size_needed, nullptr, nullptr);
+    if (converted_size <= 0) return "";
 
-    return "";
+    return result;
 }
 
 void HookedDebugMenu(void* qUnkClass, float* pLocation, wchar_t* pwString)

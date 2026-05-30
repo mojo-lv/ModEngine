@@ -24,7 +24,7 @@ static void DrawDebugMenu()
 
     for (int i = 0; i < g_menuList.size(); ++i) {
         if (log_triggered) {
-            std::cout << "[debug_menu] " << g_menuList[i].text << std::endl;
+            std::cout << "[debug_menu] " << g_menuList[i].text.c_str() << std::endl;
         }
 
         ImGui::GetWindowDrawList()->AddText(

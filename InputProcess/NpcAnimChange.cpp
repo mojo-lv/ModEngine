@@ -16,10 +16,6 @@ static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
-#define NPC_MAX 3
-static uintptr_t npcList[NPC_MAX];
-static int npcIndex = 0;
-
 static float animSpeed = 0;
 static float animTurnSpeed = 200;
 static bool logAnim = false;
@@ -31,14 +27,8 @@ extern INIReader g_INI;
 
 static bool IsNpcCtrl(uintptr_t npc)
 {
-    if (npcList[npcIndex] == 0) return false;
-
-    for (int i = 0; i < NPC_MAX; i++) {
-        if (npcList[i] == npc) {
-            return true;
-        }
-    }
-    return false;
+    uintptr_t base = *(uintptr_t*)(0x143d7a388);
+    return base && npc == *(uintptr_t*)(base + 0x160);
 }
 
 static void LoadAnimConfig()
@@ -65,10 +55,6 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
 {
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x300);
     if (animState.npc != npc) {
-        if (!IsNpcCtrl(npc)) {
-            npcIndex = (npcIndex + 1) % NPC_MAX;
-            npcList[npcIndex] = npc;
-        }
         animState.npc = npc;
         animState.lastAnim = NpcAnimState::INVALID_ANIM;
         animState.inherit = false;
