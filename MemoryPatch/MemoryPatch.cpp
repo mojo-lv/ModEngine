@@ -92,6 +92,30 @@ void PatchNpcDamageHook(uintptr_t hookAddress)
     PatchMemory(hookAddress + 5, bytes);
 }
 
+void PatchDbgCamNpcCtrlHook(uintptr_t hookAddress)
+{
+    // mov rcx, rbx; call
+    std::vector<uint8_t> bytes = {0x48, 0x8B, 0xCB, 0xE8};
+    PatchMemory(hookAddress - 3, bytes);
+}
+
+void PatchDbgCamFreeHook(uintptr_t hookAddress, bool arg2)
+{
+    // call
+    std::vector<uint8_t> bytes = {0xE8};
+    PatchMemory(hookAddress, bytes);
+
+    // test al, al
+    bytes = {0x84, 0xC0};
+    PatchMemory(hookAddress + 5, bytes);
+
+    if (arg2) {
+        // mov rdx, rdi
+        std::vector<uint8_t> bytes = {0x48, 0x89, 0xFA};
+        PatchMemory(hookAddress - 3, bytes);
+    }
+}
+
 void PatchNpcAnimHook(uintptr_t hookAddress)
 {
     /*  mov edx, 0xffffffff
@@ -134,7 +158,7 @@ void PatchNpcAnimCancelHook(uintptr_t hookAddress)
     PatchMemory(hookAddress + 5, bytes);
 }
 
-void PatchNpcLooKHook(uintptr_t hookAddress)
+void PatchNpcLookHook(uintptr_t hookAddress)
 {
     // mov r8, qword [rax+0x10]
     // mov rax, qword [r8+0x1ff8]
@@ -148,35 +172,4 @@ void PatchNpcLooKHook(uintptr_t hookAddress)
     // mov rdx, rax; nop
     bytes = {0x48, 0x89, 0xc2, 0x90};
     PatchMemory(hookAddress + 5, bytes);
-}
-
-void PatchDbgCamFreezeHook(uintptr_t hookAddress)
-{
-    // mov rcx, rbx; call
-    std::vector<uint8_t> bytes = {0x48, 0x8B, 0xCB, 0xE8};
-    PatchMemory(hookAddress - 3, bytes);
-}
-
-void PatchDbgCamNpcCtrlHook(uintptr_t hookAddress)
-{
-    // nop; call
-    std::vector<uint8_t> bytes = {0x90, 0x90, 0xE8};
-    PatchMemory(hookAddress - 2, bytes);
-}
-
-void PatchDbgCamFreeHook(uintptr_t hookAddress, bool arg2)
-{
-    // call
-    std::vector<uint8_t> bytes = {0xE8};
-    PatchMemory(hookAddress, bytes);
-
-    // test al, al
-    bytes = {0x84, 0xC0};
-    PatchMemory(hookAddress + 5, bytes);
-
-    if (arg2) {
-        // mov rdx, rdi
-        std::vector<uint8_t> bytes = {0x48, 0x89, 0xFA};
-        PatchMemory(hookAddress - 3, bytes);
-    }
 }

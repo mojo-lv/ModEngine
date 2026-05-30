@@ -19,7 +19,6 @@ static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 #define NPC_MAX 3
 static uintptr_t npcList[NPC_MAX];
 static int npcIndex = 0;
-static uintptr_t npcPlayer = 0;
 
 static float animSpeed = 0;
 static float animTurnSpeed = 200;
@@ -64,14 +63,13 @@ static void LoadAnimConfig()
 
 uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
 {
-    animState.np = 0;
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x300);
-    if (npcPlayer != npc) {
+    if (animState.npc != npc) {
         if (!IsNpcCtrl(npc)) {
             npcIndex = (npcIndex + 1) % NPC_MAX;
             npcList[npcIndex] = npc;
         }
-        npcPlayer = npc;
+        animState.npc = npc;
         animState.lastAnim = NpcAnimState::INVALID_ANIM;
         animState.inherit = false;
     }
@@ -156,11 +154,6 @@ float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
 {
     *arg2 = *(float*)(arg1 + 0x308);
     if ((*arg2 == 0) && IsNpcCtrl(arg3)) {
-        if ((npcPlayer == arg3) && (animState.np++ > NpcAnimState::NP_MAX)) {
-            npcPlayer = 0;
-            *(uint8_t*)(arg3 + 0x1070) = 0;
-        }
-
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
@@ -221,7 +214,7 @@ void EnableNpcAnimChange()
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LOOK_ADDR), &HookNpcLook, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LOOK_ADDR));
-        PatchNpcLooKHook(HOOK_NPC_LOOK_ADDR);
+        PatchNpcLookHook(HOOK_NPC_LOOK_ADDR);
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
     }
