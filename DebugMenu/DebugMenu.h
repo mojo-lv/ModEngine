@@ -15,6 +15,7 @@ struct MenuEntry {
 struct DbgCamState {
     uint8_t* playerMaskPtr = nullptr;
     uintptr_t npc = 0;
+    uintptr_t lastNpc = 0;
     uint32_t lastCamMode = 0;
     uint8_t lastMask = 0;
 };
