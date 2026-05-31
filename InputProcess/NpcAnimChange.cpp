@@ -25,12 +25,6 @@ static NpcAnimConfig animConfig;
 
 extern INIReader g_INI;
 
-static bool IsNpcCtrl(uintptr_t npc)
-{
-    uintptr_t base = *(uintptr_t*)(0x143d7a388);
-    return base && npc == *(uintptr_t*)(base + 0x160);
-}
-
 static void LoadAnimConfig()
 {
     uint32_t animId, curAnimId, newAnimId;
@@ -126,7 +120,7 @@ uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
     uintptr_t result = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x80);
 
     if (arg3 == 0x17) {
-        if (result != 0 && IsNpcCtrl(npc)) {
+        if (result != 0 && ((*(uint8_t*)(npc + 0x1f42) >> 4) & 1)) {
             *(uint32_t*)(arg2 + 0x1e8) |= 2;
             return result;
         }
@@ -139,7 +133,7 @@ uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
 float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
 {
     *arg2 = *(float*)(arg1 + 0x308);
-    if ((*arg2 == 0) && IsNpcCtrl(arg3)) {
+    if ((*arg2 == 0) && (*(uint8_t*)(arg3 + 0x1f43) & 1)) {
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
@@ -153,7 +147,7 @@ float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
 uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
     uintptr_t npc = *(uintptr_t*)(*(uintptr_t*)(arg1 + 0x20) + 0x10);
-    if (IsNpcCtrl(npc)) {
+    if (*(uint8_t*)(npc + 0x1f43) & 1) {
         return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
     }
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
@@ -161,12 +155,9 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
 
 uintptr_t hook_sub_140b45440(uintptr_t arg1)
 {
-    if (IsNpcCtrl(*(uintptr_t*)(arg1 + 8))) {
-        float speed = *(float*)(arg1 + 0xd00);
+    uintptr_t base = *(uintptr_t*)(0x143d7a388);
+    if (base && *(uintptr_t*)(base + 0x160) == *(uintptr_t*)(arg1 + 8)) {
         *(float*)(arg1 + 0xd00) = animSpeed;
-        uintptr_t result = fp_sub_140b45440(arg1);
-        *(float*)(arg1 + 0xd00) = speed;
-        return result;
     }
     return fp_sub_140b45440(arg1);
 }

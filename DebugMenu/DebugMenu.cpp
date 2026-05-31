@@ -90,13 +90,9 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
     uint32_t camMode = arg1[0x38];
     uintptr_t npc = *(uintptr_t*)(*pNPCPlayer + 0x160);
 
-    if (g_CamState.lastNpc) {
-        *(uint8_t*)(g_CamState.lastNpc + 0x1070) = 0;
-        g_CamState.lastNpc = 0;
-    }
-
     if (g_CamState.npc != npc) {
-        g_CamState.lastNpc = g_CamState.npc;
+        if (g_CamState.npc) *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
+        if (npc) *(uint16_t*)(npc + 0x1f42) = 0x0110;
         g_CamState.npc = npc;
     }
 
