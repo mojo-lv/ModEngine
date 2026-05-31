@@ -16,8 +16,6 @@ static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
-static uintptr_t npcQueue[2];
-
 static float animSpeed = 0;
 static float animTurnSpeed = 200;
 static bool logAnim = false;
@@ -29,8 +27,8 @@ extern INIReader g_INI;
 
 static bool IsNpcCtrl(uintptr_t npc)
 {
-    if (npcQueue[0] == 0) return false;
-    return npc == npcQueue[0] || npc == npcQueue[1];
+    uintptr_t base = *(uintptr_t*)(0x143d7a388);
+    return base && npc == *(uintptr_t*)(base + 0x160);
 }
 
 static void LoadAnimConfig()
@@ -56,9 +54,8 @@ static void LoadAnimConfig()
 uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
 {
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x300);
-    if (npcQueue[0] != npc) {
-        npcQueue[1] = npcQueue[0];
-        npcQueue[0] = npc;
+    if (animState.npc != npc) {
+        animState.npc = npc;
         animState.lastAnim = NpcAnimState::INVALID_ANIM;
         animState.inherit = false;
     }
