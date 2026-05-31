@@ -158,7 +158,7 @@ void PatchNpcAnimCancelHook(uintptr_t hookAddress)
     PatchMemory(hookAddress + 5, bytes);
 }
 
-void PatchNpcLookHook(uintptr_t hookAddress)
+void PatchNpcTurnHook(uintptr_t hookAddress)
 {
     // mov r8, qword [rax+0x10]
     // mov rax, qword [r8+0x1ff8]
@@ -172,4 +172,11 @@ void PatchNpcLookHook(uintptr_t hookAddress)
     // mov rdx, rax; nop
     bytes = {0x48, 0x89, 0xc2, 0x90};
     PatchMemory(hookAddress + 5, bytes);
+}
+
+void PatchNpcLifeHook(uintptr_t hookAddress)
+{
+    // nop; mov rcx, rbx; call
+    std::vector<uint8_t> bytes = {0x90, 0x90, 0x48, 0x89, 0xD9, 0xE8};
+    PatchMemory(hookAddress - 5, bytes);
 }

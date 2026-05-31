@@ -4,7 +4,10 @@
 
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
-constexpr uintptr_t HOOK_NPC_LOOK_ADDR = 0x1407daabc;
+constexpr uintptr_t HOOK_NPC_TURN_ADDR = 0x1407daabc;
+constexpr uintptr_t HOOK_NPC_LIFE_ADDR = 0x140bd653d;
+
+static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
 
 typedef uintptr_t(*t_fma)(uintptr_t, uintptr_t, uintptr_t, uintptr_t);
 static t_fma fp_sub_1407dac80 = reinterpret_cast<t_fma>(0x1407dac80);
@@ -130,7 +133,7 @@ uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
     return result;
 }
 
-float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
+float* HookedNpcTurn(uintptr_t arg1, float* arg2, uintptr_t arg3)
 {
     *arg2 = *(float*)(arg1 + 0x308);
     if ((*arg2 == 0) && (*(uint8_t*)(arg3 + 0x1f43) & 1)) {
@@ -155,11 +158,24 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
 
 uintptr_t hook_sub_140b45440(uintptr_t arg1)
 {
-    uintptr_t base = *(uintptr_t*)(0x143d7a388);
-    if (base && *(uintptr_t*)(base + 0x160) == *(uintptr_t*)(arg1 + 8)) {
+    if (*(uintptr_t*)(*pNPCPlayer + 0x160) == *(uintptr_t*)(arg1 + 8)) {
         *(float*)(arg1 + 0xd00) = playSpeed;
     }
     return fp_sub_140b45440(arg1);
+}
+
+void HookedNpcLife(uintptr_t arg1)
+{
+    if (*(uintptr_t*)(*pNPCPlayer + 0x160)) {
+        uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
+        if (point > 0) point--;
+        if (point > 0) {
+            *(uint32_t*)(arg1 + 0x130) = *(uint32_t*)(arg1 + 0x134);
+            *(uint32_t*)(arg1 + 0x148) = *(uint32_t*)(arg1 + 0x14c);
+        }
+    } else {
+        *(uint32_t*)(arg1 + 0x130) = 1;
+    }
 }
 
 void EnableNpcAnimChange()
@@ -189,11 +205,16 @@ void EnableNpcAnimChange()
         PatchNpcAnimCancelHook(HOOK_NPC_ANIM_CANCEL_ADDR);
     }
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LOOK_ADDR), &HookNpcLook, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LOOK_ADDR));
-        PatchNpcLookHook(HOOK_NPC_LOOK_ADDR);
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_TURN_ADDR), &HookedNpcTurn, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_TURN_ADDR));
+        PatchNpcTurnHook(HOOK_NPC_TURN_ADDR);
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR), &HookedNpcLife, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR));
+        PatchNpcLifeHook(HOOK_NPC_LIFE_ADDR);
     }
 
     if (playSpeed > 0) {
