@@ -92,7 +92,7 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
 
     if (g_CamState.npc != npc) {
         if (g_CamState.npc) *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
-        if (npc) *(uint16_t*)(npc + 0x1f42) = 0x0110;
+        if (npc) *(uint16_t*)(npc + 0x1f42) |= 0x0110;
         g_CamState.npc = npc;
     }
 

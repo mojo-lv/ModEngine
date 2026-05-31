@@ -16,8 +16,8 @@ static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
-static float animSpeed = 0;
-static float animTurnSpeed = 200;
+static float playSpeed = 0;
+static float turnSpeed = 200;
 static bool logAnim = false;
 
 static NpcAnimState animState;
@@ -137,7 +137,7 @@ float* HookNpcLook(uintptr_t arg1, float* arg2, uintptr_t arg3)
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
-        if (curAnim > 9999) *arg2 = animTurnSpeed;
+        if (curAnim > 9999) *arg2 = turnSpeed;
     }
 
     *(arg2 + 1) = *arg2;
@@ -157,7 +157,7 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
 {
     uintptr_t base = *(uintptr_t*)(0x143d7a388);
     if (base && *(uintptr_t*)(base + 0x160) == *(uintptr_t*)(arg1 + 8)) {
-        *(float*)(arg1 + 0xd00) = animSpeed;
+        *(float*)(arg1 + 0xd00) = playSpeed;
     }
     return fp_sub_140b45440(arg1);
 }
@@ -165,7 +165,7 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
 void EnableNpcAnimChange()
 {
     logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
-    animSpeed = g_INI.GetReal("npc_anim_change", "anim_speed", 0);
+    playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
     std::string configPath = g_INI.GetString("npc_anim_change", "config_path", "");
     bool reload = g_INI.GetBoolean("npc_anim_change", "config_runtime_reload", false);
 
@@ -196,8 +196,8 @@ void EnableNpcAnimChange()
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
     }
 
-    if (animSpeed > 0) {
-        animTurnSpeed = animTurnSpeed * animSpeed;
+    if (playSpeed > 0) {
+        turnSpeed = turnSpeed * playSpeed;
         MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
     }
