@@ -164,17 +164,26 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
     return fp_sub_140b45440(arg1);
 }
 
-void HookedNpcLife(uintptr_t arg1)
+void HookedNpcLife(uintptr_t arg1, int32_t arg2)
 {
-    if (*(uintptr_t*)(*pNPCPlayer + 0x160)) {
-        uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
-        if (point > 0) point--;
-        if (point > 0) {
-            *(uint32_t*)(arg1 + 0x130) = *(uint32_t*)(arg1 + 0x134);
-            *(uint32_t*)(arg1 + 0x148) = *(uint32_t*)(arg1 + 0x14c);
+    bool npcPlay = (*(uintptr_t*)(*pNPCPlayer + 0x160)) != 0;
+    uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
+
+    if (arg2 == 1 && npcPlay && point == 0) {
+        *(uint32_t*)(arg1 + 0x130) = 0;
+        return;
+    }
+
+    if (arg2 <= 0) {
+        if (npcPlay) {
+            if (point > 0) point--;
+            if (point > 0) {
+                *(uint32_t*)(arg1 + 0x130) = *(uint32_t*)(arg1 + 0x134);
+                *(uint32_t*)(arg1 + 0x148) = *(uint32_t*)(arg1 + 0x14c);
+            }
+        } else {
+            *(uint32_t*)(arg1 + 0x130) = 1;
         }
-    } else {
-        *(uint32_t*)(arg1 + 0x130) = 1;
     }
 }
 

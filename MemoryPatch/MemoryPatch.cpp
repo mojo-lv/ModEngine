@@ -176,7 +176,11 @@ void PatchNpcTurnHook(uintptr_t hookAddress)
 
 void PatchNpcLifeHook(uintptr_t hookAddress)
 {
-    // nop; mov rcx, rbx; call
-    std::vector<uint8_t> bytes = {0x90, 0x90, 0x48, 0x89, 0xD9, 0xE8};
-    PatchMemory(hookAddress - 5, bytes);
+    // test edi, edi; jle short 0x140bd6542
+    std::vector<uint8_t> bytes = {0x85, 0xFF, 0x7E, 0x1A};
+    PatchMemory(hookAddress - 0x19, bytes);
+
+    // mov rcx, rbx; mov edx, dword [rbx+0x130]; call
+    bytes = {0x48, 0x89, 0xD9, 0x8B, 0x93, 0x30, 0x01, 0x00, 0x00, 0xE8};
+    PatchMemory(hookAddress - 9, bytes);
 }
