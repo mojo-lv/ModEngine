@@ -7,6 +7,7 @@ constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
 constexpr uintptr_t HOOK_NPC_TURN_ADDR = 0x1407daabc;
 constexpr uintptr_t HOOK_NPC_LIFE_ADDR = 0x140bd653d;
 
+static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
 
 typedef uintptr_t(*t_fma)(uintptr_t, uintptr_t, uintptr_t, uintptr_t);
@@ -117,13 +118,21 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     return result;
 }
 
+static bool NpcNoGoodsConsume(uintptr_t arg1)
+{
+    if ((*(uint8_t*)(arg1 + 0x1f42) >> 4) & 1) {
+        return *(uintptr_t*)(*pWorldChrMan + 0x88) != arg1;
+    }
+    return false;
+}
+
 uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
 {
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x10);
     uintptr_t result = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x80);
 
     if (arg3 == 0x17) {
-        if (result != 0 && ((*(uint8_t*)(npc + 0x1f42) >> 4) & 1)) {
+        if (result != 0 && NpcNoGoodsConsume(npc)) {
             *(uint32_t*)(arg2 + 0x1e8) |= 2;
             return result;
         }
@@ -133,10 +142,18 @@ uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
     return result;
 }
 
+static bool NpcNoResourceItemConsume(uintptr_t arg1)
+{
+    if (*(uint8_t*)(arg1 + 0x1f43) & 1) {
+        return *(uintptr_t*)(*pWorldChrMan + 0x88) != arg1;
+    }
+    return false;
+}
+
 float* HookedNpcTurn(uintptr_t arg1, float* arg2, uintptr_t arg3)
 {
     *arg2 = *(float*)(arg1 + 0x308);
-    if ((*arg2 == 0) && (*(uint8_t*)(arg3 + 0x1f43) & 1)) {
+    if ((*arg2 == 0) && NpcNoResourceItemConsume(arg3)) {
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
@@ -150,7 +167,7 @@ float* HookedNpcTurn(uintptr_t arg1, float* arg2, uintptr_t arg3)
 uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
     uintptr_t npc = *(uintptr_t*)(*(uintptr_t*)(arg1 + 0x20) + 0x10);
-    if (*(uint8_t*)(npc + 0x1f43) & 1) {
+    if (NpcNoResourceItemConsume(npc)) {
         return fp_sub_1407dac80(arg1, arg2, arg3, arg4);
     }
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
@@ -166,7 +183,7 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
 
 void HookedNpcLife(uintptr_t arg1, int32_t arg2)
 {
-    bool npcPlay = (*(uintptr_t*)(*pNPCPlayer + 0x160)) != 0;
+    bool npcPlay = *(uintptr_t*)(*pNPCPlayer + 0x160) != 0;
     uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
 
     if (arg2 == 1 && npcPlay && point == 0) {

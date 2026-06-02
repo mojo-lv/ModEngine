@@ -91,8 +91,15 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
     uintptr_t npc = *(uintptr_t*)(*pNPCPlayer + 0x160);
 
     if (g_CamState.npc != npc) {
-        if (g_CamState.npc) *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
-        if (npc) *(uint16_t*)(npc + 0x1f42) |= 0x0110;
+        if (g_CamState.npc) {
+            // fix bullet bug
+            *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
+        }
+        if (npc) {
+            // set No Goods Consume for NpcAnimCancel
+            // set No ResourceItem Consume for NpcTurn
+            *(uint16_t*)(npc + 0x1f42) |= 0x0110;
+        }
         g_CamState.npc = npc;
     }
 
@@ -119,9 +126,9 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
     } else if (camMode == 2) {
         *g_CamState.playerMaskPtr |= 0xE0; // No Move/Attack/Hit
         if (npc) {
-            g_CamState.lastMask |= 0xC0;
+            g_CamState.lastMask |= 0xC0; // keep No Move/Attack when exit camMode 2
         } else {
-            g_CamState.lastMask &= 0x20;
+            g_CamState.lastMask &= 0x20; // don't keep No Move/Attack when exit camMode 2
         }
     }
 
