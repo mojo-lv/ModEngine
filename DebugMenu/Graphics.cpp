@@ -110,24 +110,22 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
     hWindow = sd.OutputWindow;
 
     ImGui::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
-
-    ImGui_ImplWin32_Init(hWindow);
-    ImGui_ImplDX11_Init(pDevice, gCtx.pContext);
-
     if (gCtx.pMenuFont) {
         io.Fonts->Clear();
         gCtx.pMenuFont = nullptr;
     }
-
     if (!g_fontConfig.path.empty()) {
         gCtx.pMenuFont = io.Fonts->AddFontFromFileTTF(g_fontConfig.path.c_str(), g_fontConfig.size, nullptr, RANGES);
     }
-
     if (!gCtx.pMenuFont) {
         gCtx.pMenuFont = io.Fonts->AddFontDefault();
     }
+
+    ImGui_ImplWin32_Init(hWindow);
+    ImGui_ImplDX11_Init(pDevice, gCtx.pContext);
 
     gCtx.sWindowFlags = ImGuiWindowFlags_NoMove
                         | ImGuiWindowFlags_NoScrollWithMouse
