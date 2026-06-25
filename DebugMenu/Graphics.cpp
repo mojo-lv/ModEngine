@@ -4,6 +4,22 @@
 
 #define LOG_KEY 'P'
 
+static const ImWchar RANGES[] = {
+    0x0020, 0x007F, // Basic Latin
+    0x00A0, 0x00FF, // Latin-1 Supplement
+    0x2000, 0x206F, // General Punctuation
+    0x2191, 0x2191, // General Punctuation
+    0x226A, 0x226B,  // Much greater than/less than symbol
+    0x25A0, 0x26C6, // Black box - White Diamond
+    0x3000, 0x303F, // CJK Symbols and Punctuation
+    0x3040, 0x309F, // Hiragana
+    0x30A0, 0x30FF, // Katakana
+    0x31F0, 0x31FF, // Katakana Phonetic Extensions
+    0x4E00, 0x9FFF, // CJK Unified Ideographs
+    0xFF00, 0xFFEF, // Halfwidth and Fullwidth Forms
+    0,
+};
+
 GraphicsContext gCtx;
 
 static bool log_triggered = false;
@@ -94,35 +110,23 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
     hWindow = sd.OutputWindow;
 
     ImGui::CreateContext();
-    ImGui::GetIO().IniFilename = nullptr;
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
 
     ImGui_ImplWin32_Init(hWindow);
     ImGui_ImplDX11_Init(pDevice, gCtx.pContext);
 
-    static const ImWchar RANGES[] = {
-        0x0020, 0x007F, // Basic Latin
-        0x00A0, 0x00FF, // Latin-1 Supplement
-        0x2000, 0x206F, // General Punctuation
-        0x2191, 0x2191, // General Punctuation
-        0x226A, 0x226B,  // Much greater than/less than symbol
-        0x25A0, 0x26C6, // Black box - White Diamond
-        0x3000, 0x303F, // CJK Symbols and Punctuation
-        0x3040, 0x309F, // Hiragana
-        0x30A0, 0x30FF, // Katakana
-        0x31F0, 0x31FF, // Katakana Phonetic Extensions
-        0x4E00, 0x9FFF, // CJK Unified Ideographs
-        0xFF00, 0xFFEF, // Halfwidth and Fullwidth Forms
-        0,
-    };
+    if (gCtx.pMenuFont) {
+        io.Fonts->Clear();
+        gCtx.pMenuFont = nullptr;
+    }
 
-    if (g_fontConfig.path.empty()) {
-        gCtx.pMenuFont = ImGui::GetIO().Fonts->AddFontDefault();
-    } else {
-        ImFontConfig font_cfg;
-        gCtx.pMenuFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(g_fontConfig.path.c_str(), g_fontConfig.size, &font_cfg, RANGES);
-        if (!gCtx.pMenuFont) {
-            gCtx.pMenuFont = ImGui::GetIO().Fonts->AddFontDefault();
-        }
+    if (!g_fontConfig.path.empty()) {
+        gCtx.pMenuFont = io.Fonts->AddFontFromFileTTF(g_fontConfig.path.c_str(), g_fontConfig.size, nullptr, RANGES);
+    }
+
+    if (!gCtx.pMenuFont) {
+        gCtx.pMenuFont = io.Fonts->AddFontDefault();
     }
 
     gCtx.sWindowFlags = ImGuiWindowFlags_NoMove
