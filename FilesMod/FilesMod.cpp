@@ -17,7 +17,6 @@ static std::unordered_map<std::wstring, size_t> va_size;
 static size_t g_cur_len;
 static std::wstring g_save_path;
 static std::wstring g_cutscene_path;
-static const std::wstring g_cutscene_path_temp = L"./<cs>";
 
 extern std::vector<HMODULE> g_LoadedDLLs;
 extern INIReader g_INI;
@@ -104,7 +103,7 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(path_view.length() - 15, 15, L"cutscenebnd.dcx") == 0) {
-                wcsncpy_s(path, len, g_cutscene_path_temp.c_str(), g_cutscene_path_temp.length());
+                wcsncpy_s(path, len, g_cutscene_path.c_str(), g_cutscene_path.length());
             }
         }
     }
@@ -124,9 +123,6 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
             std::wstring new_path = it->second;
             new_path.append(path_view.substr(g_cur_len + 5));
             return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-                dwFlagsAndAttributes, hTemplateFile);
-        } else if ((path_view[g_cur_len + 2] == L'c') && (path_view[g_cur_len + 3] == L's')) {
-            return fpCreateFileW(g_cutscene_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                 dwFlagsAndAttributes, hTemplateFile);
         }
     }
@@ -193,7 +189,7 @@ void ApplyFilesMod()
     }
 
     if (!cutscene.empty() && fs::exists(curPath / cutscene)) {
-        g_cutscene_path = (curPath / cutscene).wstring();
+        g_cutscene_path = (fs::path(L"./") / cutscene).wstring();
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
