@@ -16,8 +16,7 @@ static std::unordered_map<std::wstring, size_t> va_size;
 
 static size_t g_cur_len;
 static std::wstring g_save_path;
-static std::wstring g_cutscene_path;
-static const std::wstring g_cutscene_path_temp = L"./<cs>";
+static bool g_skip_cutscenes;
 
 extern std::vector<HMODULE> g_LoadedDLLs;
 extern INIReader g_INI;
@@ -100,11 +99,11 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             *(path + 3) = index->second[0];
             *(path + 4) = index->second[1];
             *(path + 5) = L'>';
-        } else if ((len == 43) && !g_cutscene_path.empty()) {
+        } else if ((len == 43) && g_skip_cutscenes) {
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
-            if (path_view.compare(path_view.length() - 15, 15, L"cutscenebnd.dcx") == 0) {
-                wcsncpy_s(path, len, g_cutscene_path_temp.c_str(), g_cutscene_path_temp.length());
+            if (path_view.compare(7, 8, L"cutscene") == 0) {
+                *(path + 7) = L'x';
             }
         }
     }
@@ -124,9 +123,6 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
             std::wstring new_path = it->second;
             new_path.append(path_view.substr(g_cur_len + 5));
             return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-                dwFlagsAndAttributes, hTemplateFile);
-        } else if ((path_view[g_cur_len + 2] == L'c') && (path_view[g_cur_len + 3] == L's')) {
-            return fpCreateFileW(g_cutscene_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                 dwFlagsAndAttributes, hTemplateFile);
         }
     }
@@ -157,7 +153,7 @@ void ApplyFilesMod()
     std::string dlls = g_INI.GetString("files", "dlls", "");
     std::string mods = g_INI.GetString("files", "mods", "");
     std::string save = g_INI.GetString("files", "save", "");
-    std::string cutscene = g_INI.GetString("files", "cutscene", "");
+    g_skip_cutscenes = g_INI.GetBoolean("files", "skip_cutscenes", false);
 
     size_t size;
     for (const auto& key : g_INI.Keys("virtual_alloc_size")) {
@@ -192,11 +188,8 @@ void ApplyFilesMod()
                         reinterpret_cast<LPVOID*>(&fpCopyFileW));
     }
 
-    if (!cutscene.empty() && fs::exists(curPath / cutscene)) {
-        g_cutscene_path = (curPath / cutscene).wstring();
+    if (g_skip_cutscenes) {
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
-        MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
-                        reinterpret_cast<LPVOID*>(&fpCreateFileW));
     }
 }
