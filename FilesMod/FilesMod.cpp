@@ -17,6 +17,7 @@ static std::unordered_map<std::wstring, size_t> va_size;
 static size_t g_cur_len;
 static std::wstring g_save_path;
 static std::wstring g_cutscene_path;
+static const std::wstring g_cutscene_path_temp = L"./<cs>";
 
 extern std::vector<HMODULE> g_LoadedDLLs;
 extern INIReader g_INI;
@@ -100,15 +101,10 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             *(path + 4) = index->second[1];
             *(path + 5) = L'>';
         } else if ((len == 43) && !g_cutscene_path.empty()) {
+            // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(path_view.length() - 15, 15, L"cutscenebnd.dcx") == 0) {
-                // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
-                *path = L'.';
-                *(path + 1) = L'/';
-                *(path + 2) = L'<';
-                *(path + 3) = L'c';
-                *(path + 4) = L's';
-                *(path + 5) = L'>';
+                wcsncpy_s(path, len, g_cutscene_path_temp.c_str(), g_cutscene_path_temp.length());
             }
         }
     }
