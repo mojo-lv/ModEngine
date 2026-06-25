@@ -4,10 +4,31 @@
 
 #define LOG_KEY 'P'
 
-static GraphicsContext gCtx;
+GraphicsContext gCtx;
 
 static bool log_triggered = false;
 static bool last_state = false;
+
+void ShutdownImGui()
+{
+    if (gCtx.pSwapChain) {
+        gCtx.pSwapChain = nullptr;
+
+        ImGui_ImplDX11_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+
+        if (gCtx.pRenderTargetView) {
+            gCtx.pRenderTargetView->Release();
+            gCtx.pRenderTargetView = nullptr;
+        }
+
+        if (gCtx.pContext) {
+            gCtx.pContext->Release();
+            gCtx.pContext = nullptr;
+        }
+    }
+}
 
 static void DrawDebugMenu()
 {
@@ -39,14 +60,34 @@ static void DrawDebugMenu()
     ImGui::End();
 }
 
+static void UpdateRenderTargetView(ID3D11Device* pDevice = nullptr)
+{
+    if (!gCtx.pSwapChain) return;
+    ID3D11Texture2D* RenderTargetTexture = nullptr;
+    HRESULT hr = gCtx.pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&RenderTargetTexture);
+    if (FAILED(hr)) return;
+
+    if (pDevice) {
+        pDevice->CreateRenderTargetView(RenderTargetTexture, nullptr, &gCtx.pRenderTargetView);
+    } else {
+        hr = gCtx.pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&pDevice);
+        if (SUCCEEDED(hr)) {
+            pDevice->CreateRenderTargetView(RenderTargetTexture, nullptr, &gCtx.pRenderTargetView);
+            pDevice->Release();
+        }
+    }
+
+    RenderTargetTexture->Release();
+}
+
 static void InitImGui(IDXGISwapChain* pSwapChain)
 {
+    ShutdownImGui();
     ID3D11Device* pDevice = nullptr;
     HWND hWindow = nullptr;
     HRESULT hr = pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&pDevice);
     if (FAILED(hr)) return;
 
-    if (gCtx.pContext) gCtx.pContext->Release();
     pDevice->GetImmediateContext(&gCtx.pContext);
     DXGI_SWAP_CHAIN_DESC sd;
     pSwapChain->GetDesc(&sd);
@@ -57,15 +98,6 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
 
     ImGui_ImplWin32_Init(hWindow);
     ImGui_ImplDX11_Init(pDevice, gCtx.pContext);
-
-    ID3D11Texture2D* RenderTargetTexture = nullptr;
-    hr = pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&RenderTargetTexture);
-    if (FAILED(hr)) return;
-
-    if (gCtx.pRenderTargetView) gCtx.pRenderTargetView->Release();
-    pDevice->CreateRenderTargetView(RenderTargetTexture, nullptr, &gCtx.pRenderTargetView);
-    RenderTargetTexture->Release();
-    pDevice->Release();
 
     static const ImWchar RANGES[] = {
         0x0020, 0x007F, // Basic Latin
@@ -83,35 +115,36 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
         0,
     };
 
-    ImFontConfig font_cfg;
     if (g_fontConfig.path.empty()) {
         gCtx.pMenuFont = ImGui::GetIO().Fonts->AddFontDefault();
     } else {
+        ImFontConfig font_cfg;
         gCtx.pMenuFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(g_fontConfig.path.c_str(), g_fontConfig.size, &font_cfg, RANGES);
-        if (gCtx.pMenuFont == nullptr) {
+        if (!gCtx.pMenuFont) {
             gCtx.pMenuFont = ImGui::GetIO().Fonts->AddFontDefault();
         }
     }
 
-    gCtx.sWindowFlags = ImGuiWindowFlags_NoTitleBar
-                        | ImGuiWindowFlags_NoResize
-                        | ImGuiWindowFlags_NoMove
-                        | ImGuiWindowFlags_NoCollapse
-                        | ImGuiWindowFlags_NoScrollbar
+    gCtx.sWindowFlags = ImGuiWindowFlags_NoMove
                         | ImGuiWindowFlags_NoScrollWithMouse
                         | ImGuiWindowFlags_NoBackground
                         | ImGuiWindowFlags_NoSavedSettings
-                        | ImGuiWindowFlags_NoInputs
                         | ImGuiWindowFlags_NoFocusOnAppearing
-                        | ImGuiWindowFlags_NoBringToFrontOnFocus;
+                        | ImGuiWindowFlags_NoBringToFrontOnFocus
+                        | ImGuiWindowFlags_NoDecoration
+                        | ImGuiWindowFlags_NoInputs;
 
     gCtx.pSwapChain = pSwapChain;
+    UpdateRenderTargetView(pDevice);
+    pDevice->Release();
 }
 
 void RenderImGui(IDXGISwapChain* pSwapChain)
 {
     if (pSwapChain != gCtx.pSwapChain) {
         InitImGui(pSwapChain);
+    } else if (!gCtx.pRenderTargetView) {
+        UpdateRenderTargetView();
     } else if (!g_menuList.empty()) {
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
@@ -122,26 +155,5 @@ void RenderImGui(IDXGISwapChain* pSwapChain)
         ImGui::Render();
         gCtx.pContext->OMSetRenderTargets(1, &gCtx.pRenderTargetView, nullptr);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-    }
-}
-
-void ShutdownImGui()
-{
-    if (gCtx.pSwapChain) {
-        gCtx.pSwapChain = nullptr;
-
-        ImGui_ImplDX11_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
-
-        if (gCtx.pRenderTargetView) {
-            gCtx.pRenderTargetView->Release();
-            gCtx.pRenderTargetView = nullptr;
-        }
-
-        if (gCtx.pContext) {
-            gCtx.pContext->Release();
-            gCtx.pContext = nullptr;
-        }
     }
 }

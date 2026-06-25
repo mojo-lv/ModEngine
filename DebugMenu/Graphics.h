@@ -15,5 +15,6 @@ struct GraphicsContext {
     ImGuiWindowFlags        sWindowFlags      = 0;
 };
 
+extern GraphicsContext gCtx;
 void RenderImGui(IDXGISwapChain* pSwapChain);
 void ShutdownImGui();

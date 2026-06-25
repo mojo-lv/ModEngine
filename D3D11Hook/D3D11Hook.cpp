@@ -2,13 +2,27 @@
 #include "DebugMenu/Graphics.h"
 #include "D3D11Hook.h"
 
-typedef HRESULT(APIENTRY* Present_t)(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
-static Present_t oPresent = nullptr; // Original function pointer
+typedef HRESULT(APIENTRY* Present_t)(IDXGISwapChain*, UINT, UINT);
+static Present_t oPresent = nullptr;
+
+typedef HRESULT(STDMETHODCALLTYPE* ResizeBuffers_t)(IDXGISwapChain*, UINT, UINT, UINT, DXGI_FORMAT, UINT);
+ResizeBuffers_t oResizeBuffers = nullptr;
 
 HRESULT APIENTRY HookedD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
     RenderImGui(pSwapChain);
     return oPresent(pSwapChain, SyncInterval, Flags);
+}
+
+HRESULT STDMETHODCALLTYPE HookedResizeBuffers(IDXGISwapChain* pSwapChain, UINT BufferCount,
+                            UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+{
+    if (gCtx.pRenderTargetView) {
+        gCtx.pRenderTargetView->Release();
+        gCtx.pRenderTargetView = nullptr;
+    }
+
+    return oResizeBuffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
 DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
@@ -28,7 +42,7 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
         0, 0, 100, 100, nullptr, nullptr, wc.hInstance, nullptr);
 
     DXGI_SWAP_CHAIN_DESC sd{};
-    sd.BufferCount = 2;
+    sd.BufferCount = 1;
     sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd.OutputWindow = hwnd;
@@ -48,15 +62,21 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
     if (SUCCEEDED(hr)) {
         // Get the address of the Present function from the vtable
         void** pVTable = *reinterpret_cast<void***>(swapChain);
-        void* pPresentAddress = pVTable[8];
-        if (MH_CreateHook(pPresentAddress, &HookedD3D11Present, reinterpret_cast<void**>(&oPresent)) == MH_OK) {
-            MH_EnableHook(pPresentAddress);
+        void* pPresentAddr = pVTable[8];
+        void* pResizeBuffersAddr = pVTable[13];
+
+        if (MH_CreateHook(pPresentAddr, &HookedD3D11Present, reinterpret_cast<void**>(&oPresent)) == MH_OK) {
+            MH_EnableHook(pPresentAddr);
+        }
+
+        if (MH_CreateHook(pResizeBuffersAddr, &HookedResizeBuffers, reinterpret_cast<void**>(&oResizeBuffers)) == MH_OK) {
+            MH_EnableHook(pResizeBuffersAddr);
         }
 
         // Cleanup the dummy resources
         swapChain->Release();
-        device->Release();
         context->Release();
+        device->Release();
     }
 
     DestroyWindow(hwnd);
