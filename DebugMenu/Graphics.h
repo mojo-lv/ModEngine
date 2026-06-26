@@ -7,6 +7,7 @@
 
 struct GraphicsContext {
     IDXGISwapChain*         pSwapChain        = nullptr;
+    ID3D11Device*           pDevice           = nullptr;
     ID3D11DeviceContext*    pContext          = nullptr;
     ID3D11RenderTargetView* pRenderTargetView = nullptr;
     ImFont*                 pMenuFont         = nullptr;

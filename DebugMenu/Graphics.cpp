@@ -43,6 +43,11 @@ void ShutdownImGui()
             gCtx.pContext->Release();
             gCtx.pContext = nullptr;
         }
+
+        if (gCtx.pDevice) {
+            gCtx.pDevice->Release();
+            gCtx.pDevice = nullptr;
+        }
     }
 }
 
@@ -76,38 +81,32 @@ static void DrawDebugMenu()
     ImGui::End();
 }
 
-static void UpdateRenderTargetView(ID3D11Device* pDevice = nullptr)
+static void UpdateRenderTargetView()
 {
-    if (!gCtx.pSwapChain) return;
+    if (!gCtx.pDevice) {
+        gCtx.pSwapChain = nullptr;
+        return;
+    }
+
     ID3D11Texture2D* RenderTargetTexture = nullptr;
     HRESULT hr = gCtx.pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&RenderTargetTexture);
     if (FAILED(hr)) return;
 
-    if (pDevice) {
-        pDevice->CreateRenderTargetView(RenderTargetTexture, nullptr, &gCtx.pRenderTargetView);
-    } else {
-        hr = gCtx.pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&pDevice);
-        if (SUCCEEDED(hr)) {
-            pDevice->CreateRenderTargetView(RenderTargetTexture, nullptr, &gCtx.pRenderTargetView);
-            pDevice->Release();
-        }
-    }
-
+    gCtx.pDevice->CreateRenderTargetView(RenderTargetTexture, nullptr, &gCtx.pRenderTargetView);
     RenderTargetTexture->Release();
 }
 
 static void InitImGui(IDXGISwapChain* pSwapChain)
 {
     ShutdownImGui();
-    ID3D11Device* pDevice = nullptr;
-    HWND hWindow = nullptr;
-    HRESULT hr = pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&pDevice);
+    gCtx.pSwapChain = pSwapChain;
+    HRESULT hr = pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&gCtx.pDevice);
     if (FAILED(hr)) return;
 
-    pDevice->GetImmediateContext(&gCtx.pContext);
+    gCtx.pDevice->GetImmediateContext(&gCtx.pContext);
     DXGI_SWAP_CHAIN_DESC sd;
     pSwapChain->GetDesc(&sd);
-    hWindow = sd.OutputWindow;
+    HWND hWindow = sd.OutputWindow;
 
     ImGui::CreateContext();
 
@@ -125,7 +124,7 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
     }
 
     ImGui_ImplWin32_Init(hWindow);
-    ImGui_ImplDX11_Init(pDevice, gCtx.pContext);
+    ImGui_ImplDX11_Init(gCtx.pDevice, gCtx.pContext);
 
     gCtx.sWindowFlags = ImGuiWindowFlags_NoMove
                         | ImGuiWindowFlags_NoScrollWithMouse
@@ -136,9 +135,7 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
                         | ImGuiWindowFlags_NoDecoration
                         | ImGuiWindowFlags_NoInputs;
 
-    gCtx.pSwapChain = pSwapChain;
-    UpdateRenderTargetView(pDevice);
-    pDevice->Release();
+    UpdateRenderTargetView();
 }
 
 void RenderImGui(IDXGISwapChain* pSwapChain)
