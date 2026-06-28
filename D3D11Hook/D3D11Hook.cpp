@@ -6,7 +6,7 @@ typedef HRESULT(APIENTRY* Present_t)(IDXGISwapChain*, UINT, UINT);
 static Present_t oPresent = nullptr;
 
 typedef HRESULT(STDMETHODCALLTYPE* ResizeBuffers_t)(IDXGISwapChain*, UINT, UINT, UINT, DXGI_FORMAT, UINT);
-ResizeBuffers_t oResizeBuffers = nullptr;
+static ResizeBuffers_t oResizeBuffers = nullptr;
 
 HRESULT APIENTRY HookedD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {

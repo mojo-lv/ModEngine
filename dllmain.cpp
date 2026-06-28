@@ -12,20 +12,19 @@ std::vector<HMODULE> g_LoadedDLLs;
 INIReader g_INI("mod_engine.ini");
 
 typedef int64_t(*t_SteamAPI_Init)();
-t_SteamAPI_Init fpSteamInit = nullptr;
+static t_SteamAPI_Init fpSteamInit = nullptr;
 
 static void ApplyPostUnpackHooks()
 {
-    if (g_INI.GetBoolean("debug_menu", "enable", false)) {
+    if (g_INI.HasSection("debug_menu")) {
         EnableDebugMenu();
         CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
     }
-
-    ApplyFilesMod();
-    EnableKeyRemap();
-    EnableNpcAnimChange();
-    EnablePlayerSkillChange();
-    ApplyMemoryPatch();
+    if (g_INI.HasSection("files")) ApplyFilesMod();
+    if (g_INI.HasSection("key_remap")) EnableKeyRemap();
+    if (g_INI.HasSection("npc_anim_change")) EnableNpcAnimChange();
+    if (g_INI.HasSection("player_skill_change")) EnablePlayerSkillChange();
+    if (g_INI.HasSection("memory")) ApplyMemoryPatch();
 
     MH_EnableHook(MH_ALL_HOOKS);
 }
