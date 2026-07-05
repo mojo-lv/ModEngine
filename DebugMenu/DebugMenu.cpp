@@ -3,8 +3,9 @@
 #include "DebugMenu.h"
 
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
-constexpr uintptr_t HOOK_DEBUG_NPC_ADDR = 0x140614f13;
+constexpr uintptr_t HOOK_NPC_LIST_ADDR = 0x140614f13;
 constexpr uintptr_t HOOK_NPC_DAMAGE_ADDR = 0x140b6a13d;
+constexpr uintptr_t HOOK_NPC_LIFE_ADDR = 0x140bd653d;
 constexpr uintptr_t HOOK_DBG_CAM_NPC_CTRL_ADDR = 0x14083bebf;
 constexpr uintptr_t HOOK_DBG_CAM_FREE_T_ADDR = 0x14083b3fc;
 constexpr uintptr_t HOOK_DBG_CAM_FREE_F_ADDR = 0x140a750e8;
@@ -61,7 +62,7 @@ void HookedDebugMenu(void* qUnkClass, float* pLocation, wchar_t* pwString)
     }
 }
 
-void HookedDebugNpc()
+void HookedNpcList()
 {
     uintptr_t* begin = *(uintptr_t**)(*pWorldChrMan + 0x3130);
     uintptr_t* end = *(uintptr_t**)(*pWorldChrMan + 0x3138);
@@ -85,10 +86,34 @@ uint16_t HookedNpcDamage(uint16_t arg1)
     return arg1;
 }
 
+void HookedNpcLife(uintptr_t arg1, int32_t arg2)
+{
+    bool npcPlay = *(uintptr_t*)(*pNPCPlayer + 0x160) != 0;
+    uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
+
+    if (arg2 == 1 && npcPlay && point == 0) {
+        *(uint32_t*)(arg1 + 0x130) = 0;
+        return;
+    }
+
+    if (arg2 <= 0) {
+        if (npcPlay) {
+            if (point > 0) point--;
+            if (point > 0) {
+                *(uint32_t*)(arg1 + 0x130) = *(uint32_t*)(arg1 + 0x134);
+                *(uint32_t*)(arg1 + 0x148) = *(uint32_t*)(arg1 + 0x14c);
+            }
+        } else {
+            *(uint32_t*)(arg1 + 0x130) = 1;
+        }
+    }
+}
+
 int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
 {
     uint32_t camMode = arg1[0x38];
     uintptr_t npc = *(uintptr_t*)(*pNPCPlayer + 0x160);
+    static uintptr_t* npcCtrlPtr = nullptr;
 
     if (g_CamState.npc != npc) {
         if (g_CamState.npc) {
@@ -96,6 +121,9 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
             *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
         }
         if (npc) {
+            npcCtrlPtr = (uintptr_t*)(*(uintptr_t*)(npc + 0x50) + 0x358);
+            if (camMode) *npcCtrlPtr = 0;
+
             // set No Goods Consume for NpcAnimCancel
             // set No ResourceItem Consume for NpcTurn
             *(uint16_t*)(npc + 0x1f42) |= 0x0110;
@@ -103,12 +131,11 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
         g_CamState.npc = npc;
     }
 
-    if (npc) {
-        uintptr_t& ctrlPtr = *(uintptr_t*)(*(uintptr_t*)(npc + 0x50) + 0x358);
-        if (camMode) {
-            ctrlPtr = 0;
-        } else if (!ctrlPtr) {
-            ctrlPtr = *(uintptr_t*)(*pNPCPlayer + 0x150);
+    if (npc && ((camMode == 0) != (g_CamState.lastCamMode == 0))) {
+        if (camMode == 0) {
+            *npcCtrlPtr = *(uintptr_t*)(*pNPCPlayer + 0x150);
+        } else {
+            *npcCtrlPtr = 0;
         }
     }
 
@@ -148,7 +175,7 @@ void EnableDebugMenu()
 {
     g_log_debug_menu = g_INI.GetBoolean("logs", "debug_menu", false);
     std::string fontPathStr = g_INI.GetString("debug_menu", "font_path", "");
-    ULONG fontSize = g_INI.GetUnsigned("debug_menu", "font_size", 0);
+    float fontSize = g_INI.GetReal("debug_menu", "font_size", 0);
     ULONG color = g_INI.GetUnsigned("debug_menu", "color", 0);
 
     fs::path fontPath = fs::current_path() / fontPathStr;
@@ -156,8 +183,8 @@ void EnableDebugMenu()
         g_fontConfig.path = fontPath.string();
     }
 
-    if (fontSize != 0) {
-        g_fontConfig.size = (float)fontSize;
+    if (fontSize > 0) {
+        g_fontConfig.size = fontSize;
     }
 
     if (color != 0) {
@@ -174,14 +201,19 @@ void EnableDebugMenu()
         PatchDebugMenuHook(HOOK_DEBUG_MENU_ADDR);
     }
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR), &HookedDebugNpc, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DEBUG_NPC_ADDR));
-        PatchDebugNpcHook(HOOK_DEBUG_NPC_ADDR);
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIST_ADDR), &HookedNpcList, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIST_ADDR));
+        PatchNpcListHook(HOOK_NPC_LIST_ADDR);
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR), &HookedNpcDamage, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR));
         PatchNpcDamageHook(HOOK_NPC_DAMAGE_ADDR);
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR), &HookedNpcLife, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR));
+        PatchNpcLifeHook(HOOK_NPC_LIFE_ADDR);
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_NPC_CTRL_ADDR), &HookedDbgCamNpcCtrl, NULL) == MH_OK) {

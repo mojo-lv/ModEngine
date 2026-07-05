@@ -8,11 +8,20 @@
 #include "InputProcess/NpcAnimChange.h"
 #include "InputProcess/PlayerSkillChange.h"
 
-std::vector<HMODULE> g_LoadedDLLs;
-INIReader g_INI("mod_engine.ini");
+typedef HRESULT(WINAPI *t_DirectInput8Create)(
+    HINSTANCE hinst,
+    DWORD dwVersion,
+    REFIID riidltf,
+    LPVOID *ppvOut,
+    LPUNKNOWN punkOuter
+);
+static t_DirectInput8Create fpDInput8Create = nullptr;
 
 typedef int64_t(*t_SteamAPI_Init)();
 static t_SteamAPI_Init fpSteamInit = nullptr;
+
+std::vector<HMODULE> g_LoadedDLLs;
+INIReader g_INI("mod_engine.ini");
 
 static void ApplyPostUnpackHooks()
 {
@@ -29,19 +38,42 @@ static void ApplyPostUnpackHooks()
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
-int64_t Hook_SteamAPI_Init()
+int64_t SteamAPI_Init()
 {
     ApplyPostUnpackHooks();
-    return fpSteamInit();
+    if (fpSteamInit) {
+        return fpSteamInit();
+    }
+    return 0;
+}
+
+static void GetOriginalFunction()
+{
+    wchar_t dllPath[MAX_PATH];
+    GetSystemDirectoryW(dllPath, MAX_PATH);
+    lstrcatW(dllPath, L"\\dinput8.dll");
+    HMODULE hMod = LoadLibraryW(dllPath);
+    if (hMod) {
+        g_LoadedDLLs.push_back(hMod);
+        fpDInput8Create = (t_DirectInput8Create)GetProcAddress(hMod, "DirectInput8Create");
+    }
 }
 
 static void OnAttach()
 {
+    GetOriginalFunction();
+
+    LPVOID pTarget = nullptr;
+    HMODULE hMod = GetModuleHandleW(L"steam_api64.dll");
+    if (hMod) pTarget = GetProcAddress(hMod, "SteamAPI_Init");
+
     MH_Initialize();
-    auto steamApiHwnd = GetModuleHandleW(L"steam_api64.dll");
-    auto initAddr = GetProcAddress(steamApiHwnd, "SteamAPI_Init");
-    MH_CreateHook(initAddr, &Hook_SteamAPI_Init, reinterpret_cast<LPVOID*>(&fpSteamInit));
-    MH_EnableHook(initAddr);
+    if (pTarget) {
+        MH_CreateHook(pTarget, &SteamAPI_Init, reinterpret_cast<LPVOID*>(&fpSteamInit));
+        MH_EnableHook(pTarget);
+    } else {
+        SteamAPI_Init();
+    }
 }
 
 static void OnDetach()
@@ -70,6 +102,16 @@ static bool LoadConfig(HMODULE hModule) {
     if (char* lastSlash = strrchr(path, '\\')) *(lastSlash + 1) = '\0';
     g_INI = INIReader(std::string(path) + "mod_engine.ini");
     return !g_INI.ParseError();
+}
+
+// The main export that is called by the game.
+HRESULT WINAPI DirectInput8Create(
+    HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter)
+{
+    if (fpDInput8Create) {
+        return fpDInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
+    }
+    return E_FAIL;
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)

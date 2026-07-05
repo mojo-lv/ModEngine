@@ -5,7 +5,6 @@
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
 constexpr uintptr_t HOOK_NPC_TURN_ADDR = 0x1407daabc;
-constexpr uintptr_t HOOK_NPC_LIFE_ADDR = 0x140bd653d;
 
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
@@ -118,6 +117,14 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     return result;
 }
 
+uintptr_t hook_sub_140b45440(uintptr_t arg1)
+{
+    if (*(uintptr_t*)(*pNPCPlayer + 0x160) == *(uintptr_t*)(arg1 + 8)) {
+        *(float*)(arg1 + 0xd00) = playSpeed;
+    }
+    return fp_sub_140b45440(arg1);
+}
+
 static bool NpcNoGoodsConsume(uintptr_t arg1)
 {
     if ((*(uint8_t*)(arg1 + 0x1f42) >> 4) & 1) {
@@ -173,57 +180,28 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
 }
 
-uintptr_t hook_sub_140b45440(uintptr_t arg1)
-{
-    if (*(uintptr_t*)(*pNPCPlayer + 0x160) == *(uintptr_t*)(arg1 + 8)) {
-        *(float*)(arg1 + 0xd00) = playSpeed;
-    }
-    return fp_sub_140b45440(arg1);
-}
-
-void HookedNpcLife(uintptr_t arg1, int32_t arg2)
-{
-    bool npcPlay = *(uintptr_t*)(*pNPCPlayer + 0x160) != 0;
-    uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
-
-    if (arg2 == 1 && npcPlay && point == 0) {
-        *(uint32_t*)(arg1 + 0x130) = 0;
-        return;
-    }
-
-    if (arg2 <= 0) {
-        if (npcPlay) {
-            if (point > 0) point--;
-            if (point > 0) {
-                *(uint32_t*)(arg1 + 0x130) = *(uint32_t*)(arg1 + 0x134);
-                *(uint32_t*)(arg1 + 0x148) = *(uint32_t*)(arg1 + 0x14c);
-            }
-        } else {
-            *(uint32_t*)(arg1 + 0x130) = 1;
-        }
-    }
-}
-
 void EnableNpcAnimChange()
 {
-    logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
     playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
     std::string configPath = g_INI.GetString("npc_anim_change", "config_path", "");
-    bool reload = g_INI.GetBoolean("npc_anim_change", "config_runtime_reload", false);
+    animConfig.reload = g_INI.GetBoolean("npc_anim_change", "config_runtime_reload", false);
+    logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
 
     fs::path curPath = fs::current_path();
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
         animConfig.path = curPath / configPath;
         animConfig.lastWriteTime = fs::last_write_time(animConfig.path);
-        animConfig.reload = reload;
         LoadAnimConfig();
-    } else {
-        animConfig.reload = false;
+        if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR), &HookedNpcAnim, NULL) == MH_OK) {
+            MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR));
+            PatchNpcAnimHook(HOOK_NPC_ANIM_ADDR);
+        }
     }
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR), &HookedNpcAnim, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR));
-        PatchNpcAnimHook(HOOK_NPC_ANIM_ADDR);
+    if (playSpeed > 0) {
+        turnSpeed = turnSpeed * playSpeed;
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_CANCEL_ADDR), &HookedNpcAnimCancel, NULL) == MH_OK) {
@@ -236,16 +214,5 @@ void EnableNpcAnimChange()
         PatchNpcTurnHook(HOOK_NPC_TURN_ADDR);
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
-    }
-
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR), &HookedNpcLife, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR));
-        PatchNpcLifeHook(HOOK_NPC_LIFE_ADDR);
-    }
-
-    if (playSpeed > 0) {
-        turnSpeed = turnSpeed * playSpeed;
-        MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
-                    reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
     }
 }

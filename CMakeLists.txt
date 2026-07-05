@@ -20,8 +20,7 @@ endif()
 set(PROJECT_SOURCES
     pch.cpp
     dllmain.cpp
-    DllExports/exports.def
-    DllExports/exported.cpp
+    exports.def
     D3D11Hook/D3D11Hook.cpp
     DebugMenu/DebugMenu.cpp
     DebugMenu/Graphics.cpp

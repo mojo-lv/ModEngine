@@ -73,17 +73,6 @@ static void ScanDllsDir(const fs::path& dllsDir)
     }
 }
 
-size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
-{
-    std::wstring key(arg1);
-    auto it = va_size.find(key);
-    if (it != va_size.end()) {
-        return it->second;
-    }
-
-    return fpGetSekiroVASize(arg1, arg2);
-}
-
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
 {
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
@@ -103,7 +92,7 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(7, 8, L"cutscene") == 0) {
-                *(path + 7) = L'x';
+                *(path + 7) = L'_';
             }
         }
     }
@@ -148,6 +137,17 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
 
+size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
+{
+    std::wstring key(arg1);
+    auto it = va_size.find(key);
+    if (it != va_size.end()) {
+        return it->second;
+    }
+
+    return fpGetSekiroVASize(arg1, arg2);
+}
+
 void ApplyFilesMod()
 {
     std::string dlls = g_INI.GetString("files", "dlls", "");
@@ -171,12 +171,13 @@ void ApplyFilesMod()
     }
 
     if (!mods.empty() && ScanModsDir(curPath / mods)) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
-                        reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
         MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
                         reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
         MH_CreateHookApi(L"kernel32", "CreateFileW", &HookedCreateFileW, 
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
+    } else if (g_skip_cutscenes) {
+        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
+                        reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
     }
 
     if (!save.empty() && fs::exists(curPath / save)) {
@@ -188,8 +189,8 @@ void ApplyFilesMod()
                         reinterpret_cast<LPVOID*>(&fpCopyFileW));
     }
 
-    if (g_skip_cutscenes) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_PATH_ADDR), &HookedGetSekiroPath, 
-                        reinterpret_cast<LPVOID*>(&fpGetSekiroPath));
+    if (!va_size.empty()) {
+        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
+                        reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
     }
 }

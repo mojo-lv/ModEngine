@@ -11,7 +11,6 @@ struct GraphicsContext {
     ID3D11DeviceContext*    pContext          = nullptr;
     ID3D11RenderTargetView* pRenderTargetView = nullptr;
     ImFont*                 pMenuFont         = nullptr;
-    ImGuiWindowFlags        sWindowFlags      = 0;
 };
 
 extern GraphicsContext gCtx;

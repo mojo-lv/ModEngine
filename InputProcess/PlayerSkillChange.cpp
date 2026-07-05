@@ -202,19 +202,20 @@ void hook_sub_140dd9c60(uint32_t* arg1)
 void EnablePlayerSkillChange()
 {
     std::string configPath = g_INI.GetString("player_skill_change", "config_path", "");
-    bool reload = g_INI.GetBoolean("player_skill_change", "config_runtime_reload", false);
+    skillConfig.reload = g_INI.GetBoolean("player_skill_change", "config_runtime_reload", false);
     logEquipSkill = g_INI.GetBoolean("logs", "equip_skill", false);
 
     fs::path curPath = fs::current_path();
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
         skillConfig.path = curPath / configPath;
         skillConfig.lastWriteTime = fs::last_write_time(skillConfig.path);
-        skillConfig.reload = reload;
         LoadSkillConfig();
         MH_CreateHook(reinterpret_cast<LPVOID>(0x140B2C190), &hook_sub_140B2C190, 
                         reinterpret_cast<LPVOID*>(&fp_sub_140B2C190));
-    }
-
-    MH_CreateHook(reinterpret_cast<LPVOID>(0x140dd9c60), &hook_sub_140dd9c60, 
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140dd9c60), &hook_sub_140dd9c60, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140dd9c60));
+    } else if (logEquipSkill) {
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140dd9c60), &hook_sub_140dd9c60, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_140dd9c60));
+    }
 }

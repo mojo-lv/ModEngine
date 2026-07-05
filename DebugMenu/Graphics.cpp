@@ -20,10 +20,19 @@ static const ImWchar RANGES[] = {
     0,
 };
 
-GraphicsContext gCtx;
+static constexpr ImGuiWindowFlags FLAGS = ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_NoScrollWithMouse
+                        | ImGuiWindowFlags_NoBackground
+                        | ImGuiWindowFlags_NoSavedSettings
+                        | ImGuiWindowFlags_NoFocusOnAppearing
+                        | ImGuiWindowFlags_NoBringToFrontOnFocus
+                        | ImGuiWindowFlags_NoDecoration
+                        | ImGuiWindowFlags_NoInputs;
 
 static bool log_triggered = false;
 static bool last_state = false;
+
+GraphicsContext gCtx;
 
 void ShutdownImGui()
 {
@@ -56,7 +65,7 @@ static void DrawDebugMenu()
     auto* vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(vp->Pos);
     ImGui::SetNextWindowSize(vp->Size);
-    ImGui::Begin("DebugMenu", nullptr, gCtx.sWindowFlags);
+    ImGui::Begin("DebugMenu", nullptr, FLAGS);
 
     if (g_log_debug_menu) {
         bool state = (GetAsyncKeyState(LOG_KEY) & 0x8000) != 0;
@@ -83,11 +92,6 @@ static void DrawDebugMenu()
 
 static void UpdateRenderTargetView()
 {
-    if (!gCtx.pDevice) {
-        gCtx.pSwapChain = nullptr;
-        return;
-    }
-
     ID3D11Texture2D* RenderTargetTexture = nullptr;
     HRESULT hr = gCtx.pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&RenderTargetTexture);
     if (FAILED(hr)) return;
@@ -99,10 +103,10 @@ static void UpdateRenderTargetView()
 static void InitImGui(IDXGISwapChain* pSwapChain)
 {
     ShutdownImGui();
-    gCtx.pSwapChain = pSwapChain;
     HRESULT hr = pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&gCtx.pDevice);
     if (FAILED(hr)) return;
 
+    gCtx.pSwapChain = pSwapChain;
     gCtx.pDevice->GetImmediateContext(&gCtx.pContext);
     DXGI_SWAP_CHAIN_DESC sd;
     pSwapChain->GetDesc(&sd);
@@ -125,16 +129,6 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
 
     ImGui_ImplWin32_Init(hWindow);
     ImGui_ImplDX11_Init(gCtx.pDevice, gCtx.pContext);
-
-    gCtx.sWindowFlags = ImGuiWindowFlags_NoMove
-                        | ImGuiWindowFlags_NoScrollWithMouse
-                        | ImGuiWindowFlags_NoBackground
-                        | ImGuiWindowFlags_NoSavedSettings
-                        | ImGuiWindowFlags_NoFocusOnAppearing
-                        | ImGuiWindowFlags_NoBringToFrontOnFocus
-                        | ImGuiWindowFlags_NoDecoration
-                        | ImGuiWindowFlags_NoInputs;
-
     UpdateRenderTargetView();
 }
 

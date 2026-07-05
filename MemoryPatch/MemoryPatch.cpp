@@ -70,7 +70,7 @@ void PatchDebugMenuHook(uintptr_t hookAddress)
     PatchMemory(0x141187590, movAl01Bytes);
 };
 
-void PatchDebugNpcHook(uintptr_t hookAddress)
+void PatchNpcListHook(uintptr_t hookAddress)
 {
     // call
     std::vector<uint8_t> bytes = {0xE8};
@@ -90,6 +90,17 @@ void PatchNpcDamageHook(uintptr_t hookAddress)
     // cmp ah, 0x0; nop
     bytes = {0x80, 0xFC, 0x00, 0x90};
     PatchMemory(hookAddress + 5, bytes);
+}
+
+void PatchNpcLifeHook(uintptr_t hookAddress)
+{
+    // test edi, edi; jle short 0x140bd6542
+    std::vector<uint8_t> bytes = {0x85, 0xFF, 0x7E, 0x1A};
+    PatchMemory(hookAddress - 0x19, bytes);
+
+    // mov rcx, rbx; mov edx, dword [rbx+0x130]; call
+    bytes = {0x48, 0x89, 0xD9, 0x8B, 0x93, 0x30, 0x01, 0x00, 0x00, 0xE8};
+    PatchMemory(hookAddress - 9, bytes);
 }
 
 void PatchDbgCamNpcCtrlHook(uintptr_t hookAddress)
@@ -172,15 +183,4 @@ void PatchNpcTurnHook(uintptr_t hookAddress)
     // mov rdx, rax; nop
     bytes = {0x48, 0x89, 0xc2, 0x90};
     PatchMemory(hookAddress + 5, bytes);
-}
-
-void PatchNpcLifeHook(uintptr_t hookAddress)
-{
-    // test edi, edi; jle short 0x140bd6542
-    std::vector<uint8_t> bytes = {0x85, 0xFF, 0x7E, 0x1A};
-    PatchMemory(hookAddress - 0x19, bytes);
-
-    // mov rcx, rbx; mov edx, dword [rbx+0x130]; call
-    bytes = {0x48, 0x89, 0xD9, 0x8B, 0x93, 0x30, 0x01, 0x00, 0x00, 0xE8};
-    PatchMemory(hookAddress - 9, bytes);
 }
