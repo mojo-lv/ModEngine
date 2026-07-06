@@ -121,22 +121,18 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
             *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
         }
         if (npc) {
+            // Set No Goods Consume for NpcAnimCancel
+            // Set No ResourceItem Consume for NpcTurn
+            *(uint16_t*)(npc + 0x1f42) |= 0x0110;
+
             npcCtrlPtr = (uintptr_t*)(*(uintptr_t*)(npc + 0x50) + 0x358);
-            if (camMode == 0) {
-                // Set No Goods Consume for NpcAnimCancel
-                // Set No ResourceItem Consume for NpcTurn
-                *(uint16_t*)(npc + 0x1f42) |= 0x0110;
-            } else {
-                // Don't control NPC when camMode != 0
-                *npcCtrlPtr = 0;
-            }
+            if (camMode) *npcCtrlPtr = 0; // Don't control NPC
         }
         g_CamState.npc = npc;
     }
 
     if (npc && ((camMode == 0) != (g_CamState.lastCamMode == 0))) {
         if (camMode == 0) {
-            *(uint16_t*)(npc + 0x1f42) |= 0x0110;
             *npcCtrlPtr = *(uintptr_t*)(*pNPCPlayer + 0x150);
         } else {
             *npcCtrlPtr = 0;
