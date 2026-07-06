@@ -71,6 +71,7 @@ void HookedNpcList()
 
     for (size_t i = 0; i < end - begin; i++) {
         if (*(uint8_t*)(*(begin + i) + 0x1a15) & 1) {
+            // Add debug NPCs to the global NPC list
             fpAddNPC(*pNPCList, begin + i);
         }
     }
@@ -78,11 +79,10 @@ void HookedNpcList()
 
 uint16_t HookedNpcDamage(uint16_t arg1)
 {
-    if (arg1 == 0x101 || arg1 == 0) {
+    if (arg1 == 0x101) {
+        // Fix no damage issue for debug NPCs
         return 0;
     }
-
-    //std::cout << "[DebugMenu] Unknown Damage " << std::hex << arg1 << std::endl;
     return arg1;
 }
 
@@ -117,20 +117,19 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
 
     if (g_CamState.npc != npc) {
         if (g_CamState.npc) {
-            // fix bullet bug
+            // Fix bullet bug
             *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
         }
         if (npc) {
             npcCtrlPtr = (uintptr_t*)(*(uintptr_t*)(npc + 0x50) + 0x358);
             if (camMode == 0) {
-                // set No Goods Consume for NpcAnimCancel
-                // set No ResourceItem Consume for NpcTurn
+                // Set No Goods Consume for NpcAnimCancel
+                // Set No ResourceItem Consume for NpcTurn
                 *(uint16_t*)(npc + 0x1f42) |= 0x0110;
             } else {
+                // Don't control NPC when camMode != 0
                 *npcCtrlPtr = 0;
             }
-
-            
         }
         g_CamState.npc = npc;
     }
@@ -158,9 +157,9 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
     } else if (camMode == 2) {
         *g_CamState.playerMaskPtr |= 0xE0; // No Move/Attack/Hit
         if (npc) {
-            g_CamState.lastMask |= 0xC0; // keep No Move/Attack when exit camMode 2
+            g_CamState.lastMask |= 0xC0; // Keep No Move/Attack when exit camMode 2
         } else {
-            g_CamState.lastMask &= 0x20; // don't keep No Move/Attack when exit camMode 2
+            g_CamState.lastMask &= 0x20; // Don't keep No Move/Attack when exit camMode 2
         }
     }
 

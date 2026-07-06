@@ -9,7 +9,7 @@ static const ImWchar RANGES[] = {
     0x00A0, 0x00FF, // Latin-1 Supplement
     0x2000, 0x206F, // General Punctuation
     0x2191, 0x2191, // General Punctuation
-    0x226A, 0x226B,  // Much greater than/less than symbol
+    0x226A, 0x226B, // Much greater than/less than symbol
     0x25A0, 0x26C6, // Black box - White Diamond
     0x3000, 0x303F, // CJK Symbols and Punctuation
     0x3040, 0x309F, // Hiragana
