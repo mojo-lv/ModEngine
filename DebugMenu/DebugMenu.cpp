@@ -5,7 +5,6 @@
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
 constexpr uintptr_t HOOK_NPC_LIST_ADDR = 0x140614f13;
 constexpr uintptr_t HOOK_NPC_DAMAGE_ADDR = 0x140b6a13d;
-constexpr uintptr_t HOOK_NPC_LIFE_ADDR = 0x140bd653d;
 constexpr uintptr_t HOOK_DBG_CAM_NPC_CTRL_ADDR = 0x14083bebf;
 constexpr uintptr_t HOOK_DBG_CAM_FREE_T_ADDR = 0x14083b3fc;
 constexpr uintptr_t HOOK_DBG_CAM_FREE_F_ADDR = 0x140a750e8;
@@ -84,29 +83,6 @@ uint16_t HookedNpcDamage(uint16_t arg1)
         return 0;
     }
     return arg1;
-}
-
-void HookedNpcLife(uintptr_t arg1, int32_t arg2)
-{
-    bool npcPlay = *(uintptr_t*)(*pNPCPlayer + 0x160) != 0;
-    uint32_t& point = *(uint32_t*)(arg1 + 0x25c);
-
-    if (arg2 == 1 && npcPlay && point == 0) {
-        *(uint32_t*)(arg1 + 0x130) = 0;
-        return;
-    }
-
-    if (arg2 <= 0) {
-        if (npcPlay) {
-            if (point > 0) point--;
-            if (point > 0) {
-                *(uint32_t*)(arg1 + 0x130) = *(uint32_t*)(arg1 + 0x134);
-                *(uint32_t*)(arg1 + 0x148) = *(uint32_t*)(arg1 + 0x14c);
-            }
-        } else {
-            *(uint32_t*)(arg1 + 0x130) = 1;
-        }
-    }
 }
 
 int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
@@ -209,11 +185,6 @@ void EnableDebugMenu()
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR), &HookedNpcDamage, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_DAMAGE_ADDR));
         PatchNpcDamageHook(HOOK_NPC_DAMAGE_ADDR);
-    }
-
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR), &HookedNpcLife, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_LIFE_ADDR));
-        PatchNpcLifeHook(HOOK_NPC_LIFE_ADDR);
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_NPC_CTRL_ADDR), &HookedDbgCamNpcCtrl, NULL) == MH_OK) {

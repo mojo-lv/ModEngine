@@ -20,6 +20,7 @@ static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
 static float playSpeed = 0;
+static bool enablePlaySpeed = false;
 static float turnSpeed = 200;
 static bool logAnim = false;
 
@@ -117,14 +118,6 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     return result;
 }
 
-uintptr_t hook_sub_140b45440(uintptr_t arg1)
-{
-    if (*(uintptr_t*)(*pNPCPlayer + 0x160) == *(uintptr_t*)(arg1 + 8)) {
-        *(float*)(arg1 + 0xd00) = playSpeed;
-    }
-    return fp_sub_140b45440(arg1);
-}
-
 static bool NpcNoGoodsConsume(uintptr_t arg1)
 {
     if ((*(uint8_t*)(arg1 + 0x1f42) >> 4) & 1) {
@@ -180,12 +173,43 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
 }
 
+uintptr_t hook_sub_140b45440(uintptr_t arg1)
+{
+    uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
+    if (npcPlayer) {
+        uintptr_t npc = *(uintptr_t*)(arg1 + 8);
+        if ((npc == npcPlayer) && enablePlaySpeed) {
+            *(float*)(arg1 + 0xd00) = playSpeed;
+        }
+
+        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
+        if (*(uint32_t*)(base + 0x148) == 0) {
+            // Stamina is 0
+            uint32_t& redDot = *(uint32_t*)(base + 0x25c);
+            if (redDot != 0) {
+                uint32_t& hp = *(uint32_t*)(base + 0x130);
+                if (hp == 1) {
+                    hp = (redDot == 1) ? 0 : *(uint32_t*)(base + 0x134);
+                    redDot--;
+                }
+            }
+        }
+    }
+
+    return fp_sub_140b45440(arg1);
+}
+
 void EnableNpcAnimChange()
 {
-    playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
     std::string configPath = g_INI.GetString("npc_anim_change", "config_path", "");
     animConfig.reload = g_INI.GetBoolean("npc_anim_change", "config_runtime_reload", false);
     logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
+    playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
+
+    if (playSpeed > 0) {
+        turnSpeed = turnSpeed * playSpeed;
+        enablePlaySpeed = true;
+    }
 
     fs::path curPath = fs::current_path();
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
@@ -196,12 +220,6 @@ void EnableNpcAnimChange()
             MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR));
             PatchNpcAnimHook(HOOK_NPC_ANIM_ADDR);
         }
-    }
-
-    if (playSpeed > 0) {
-        turnSpeed = turnSpeed * playSpeed;
-        MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
-                    reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_CANCEL_ADDR), &HookedNpcAnimCancel, NULL) == MH_OK) {
@@ -215,4 +233,7 @@ void EnableNpcAnimChange()
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
     }
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
 }
