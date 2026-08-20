@@ -19,9 +19,9 @@ static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
+static float turnSpeed = 200;
 static float playSpeed = 0;
 static bool enablePlaySpeed = false;
-static float turnSpeed = 200;
 static bool logAnim = false;
 
 static NpcAnimState animState;
@@ -31,20 +31,39 @@ extern INIReader g_INI;
 
 static void LoadAnimConfig()
 {
-    uint32_t animId, curAnimId, newAnimId;
+    size_t start, pos, valSize;
+    uint32_t keyAnim, curAnim, newAnim;
     INIReader config(animConfig.path.string());
     for (const auto& configKey : config.Keys("")) {
-        std::string valStr = config.GetString("", configKey, "0");
-        newAnimId = std::stoul(valStr);
+        std::string valStr = config.GetString("", configKey, "");
+        if (!valStr.empty()) {
+            pos = configKey.find('_');
+            if (pos == std::string::npos) {
+                keyAnim = std::stoul(configKey);
+                curAnim = 0;
+            } else {
+                keyAnim = std::stoul(configKey.substr(0, pos));
+                curAnim = std::stoul(configKey.substr(pos + 1));
+            }
 
-        size_t pos = configKey.find('_');
-        if (pos == std::string::npos) {
-            animId = std::stoul(configKey);
-            directAnimMap[animId] = newAnimId;
-        } else {
-            animId = std::stoul(configKey.substr(0, pos));
-            curAnimId = std::stoul(configKey.substr(pos + 1));
-            animMap[{animId, curAnimId}] = newAnimId;
+            start = 0;
+            valSize = valStr.size();
+            while (start < valSize) {
+                pos = valStr.find('_', start);
+                if (pos == std::string::npos) {
+                    pos = valSize;
+                }
+                if (pos > start) {
+                    newAnim = std::stoul(valStr.substr(start, pos - start));
+                    if (curAnim) {
+                        animMap.try_emplace({keyAnim, curAnim}, newAnim);
+                    } else {
+                        directAnimMap.try_emplace(keyAnim, newAnim);
+                    }
+                    curAnim = newAnim;
+                }
+                start = pos + 1;
+            }
         }
     }
 }
@@ -62,9 +81,13 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     uintptr_t result = *(uintptr_t*)(base_ptr + 0x80);
     uint32_t* pAnim = (uint32_t*)(result + 0x170);
 
+    uint32_t curAnim = 0;
     uintptr_t animPtr = *(uintptr_t*)(base_ptr + 0x10);
-    uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
-    uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
+    for (int i = *(uint32_t*)(animPtr + 0xf0); i >= 0; --i) {
+        curAnim = *(uint32_t*)(animPtr + i * 0x14 + 0x20) % 1000000;
+        if ((curAnim < 9000) || (curAnim > 9999)) break;
+    }
+
 
     if (arg2 == NpcAnimState::INVALID_ANIM) {
         if (*pAnim != NpcAnimState::INVALID_ANIM) {
@@ -157,7 +180,7 @@ float* HookedNpcTurn(uintptr_t arg1, float* arg2, uintptr_t arg3)
         uintptr_t animPtr = *(uintptr_t*)(*(uintptr_t*)(arg3 + 0x1ff8) + 0x10);
         uint32_t curIndex = *(uint32_t*)(animPtr + 0xf0);
         uint32_t curAnim = *(uint32_t*)(animPtr + curIndex * 0x14 + 0x20) % 1000000;
-        if (curAnim > 9999) *arg2 = turnSpeed;
+        if ((curAnim < 3000) || (curAnim > 3999)) *arg2 = turnSpeed;
     }
 
     *(arg2 + 1) = *arg2;
@@ -185,12 +208,12 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
         uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
         if (*(uint32_t*)(base + 0x148) == 0) {
             // Stamina is 0
-            uint32_t& redDot = *(uint32_t*)(base + 0x25c);
-            if (redDot != 0) {
-                uint32_t& hp = *(uint32_t*)(base + 0x130);
-                if (hp == 1) {
-                    hp = (redDot == 1) ? 0 : *(uint32_t*)(base + 0x134);
+            uint32_t& hp = *(uint32_t*)(base + 0x130);
+            if (hp == 1) {
+                int32_t& redDot = *(int32_t*)(base + 0x25c);
+                if (redDot > 0) {
                     redDot--;
+                    hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
                 }
             }
         }
@@ -201,8 +224,8 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
 
 void EnableNpcAnimChange()
 {
-    std::string configPath = g_INI.GetString("npc_anim_change", "config_path", "");
-    animConfig.reload = g_INI.GetBoolean("npc_anim_change", "config_runtime_reload", false);
+    std::string configPath = g_INI.GetString("npc_anim_change", "npc_anim_config", "");
+    animConfig.reload = g_INI.GetBoolean("npc_anim_change", "npc_anim_reload", false);
     logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
     playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
 

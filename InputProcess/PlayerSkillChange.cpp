@@ -35,7 +35,7 @@ static void LoadSkillConfig()
             vKey = std::stoul(configKey.substr(2));
         }
 
-        std::string valStr = config.GetString("", configKey, "0");
+        std::string valStr = config.GetString("", configKey, "");
         if (!valStr.empty()) {
             valSize = valStr.size();
             start = 0;
@@ -73,8 +73,8 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
         skillBasePtr = reinterpret_cast<uint32_t*>(playerBaseAddr + 0x278 + 0x24);
 
         for (int i : {0, 1, 2, 4}) {
-            skillEquipData[14] = skillBasePtr[i];
-            if (skillEquipData[14] != EMPTY_SLOT) {
+            if (skillBasePtr[i] != EMPTY_SLOT) {
+                skillEquipData[14] = skillBasePtr[i];
                 skillBasePtr[i] = EMPTY_SLOT;
                 SetSkillSlot(i, skillEquipData, true);
                 skillEquipData[i] = skillEquipData[14];
@@ -104,11 +104,13 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
     if (InputFlags::SwitchProsthetic == (just_pressed & InputFlags::SwitchProsthetic)) {
         if (skillBasePtr[32] < ProstheticData.size()) {
             uint32_t slot = skillBasePtr[32] << 1;
-            skillEquipData[14] = skillBasePtr[slot];
-            if (skillEquipData[14] != skillEquipData[slot]) {
-                skillBasePtr[slot] = EMPTY_SLOT;
-                SetSkillSlot(slot, skillEquipData, true);
-                skillEquipData[slot] = skillEquipData[14];
+            if (skillBasePtr[slot] != EMPTY_SLOT) {
+                skillEquipData[14] = skillBasePtr[slot];
+                if (skillEquipData[14] != skillEquipData[slot]) {
+                    skillBasePtr[slot] = EMPTY_SLOT;
+                    SetSkillSlot(slot, skillEquipData, true);
+                    skillEquipData[slot] = skillEquipData[14];
+                }
             }
         }
         return fp_sub_140B2C190(p1, p2);
@@ -116,29 +118,30 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
 
     if (InputFlags::UseProsthetic == (just_pressed & InputFlags::UseProsthetic)) {
         if (skillBasePtr[32] < ProstheticData.size()) {
-            for (const auto& [vKey, skillId] : ProstheticData[skillBasePtr[32]]) {
-                if ((GetAsyncKeyState(vKey) & 0x8000) != 0) {
-                    skillEquipData[16] = skillId;
-                    skillEquipData[14] = GetEquipRealId(equipBaseAddr, skillEquipData + 16);
+            uint32_t slot = skillBasePtr[32] << 1;
+            if (skillBasePtr[slot] != EMPTY_SLOT) {
+                for (const auto& [vKey, skillId] : ProstheticData[skillBasePtr[32]]) {
+                    if ((GetAsyncKeyState(vKey) & 0x8000) != 0) {
+                        skillEquipData[16] = skillId;
+                        skillEquipData[14] = GetEquipRealId(equipBaseAddr, skillEquipData + 16);
 
-                    uint32_t slot = skillBasePtr[32] << 1;
-                    if (skillEquipData[14] != skillEquipData[slot]) {
-                        for (int i : {0, 2, 4}) {
-                            skillEquipData[i + 5] = skillBasePtr[i];
-                            skillBasePtr[i] = EMPTY_SLOT;
+                        if (skillEquipData[14] != skillEquipData[slot]) {
+                            for (int i : {0, 2, 4}) {
+                                skillEquipData[i + 5] = skillBasePtr[i];
+                                skillBasePtr[i] = EMPTY_SLOT;
+                            }
+                            SetSkillSlot(slot, skillEquipData, true);
+                            for (int i : {0, 2, 4}) {
+                                skillBasePtr[i] = skillEquipData[i + 5];
+                            }
+                            skillEquipData[slot] = skillEquipData[14];
+                            *current_keys_raw &= ~InputFlags::UseProsthetic;
                         }
-                        SetSkillSlot(slot, skillEquipData, true);
-                        for (int i : {0, 2, 4}) {
-                            skillBasePtr[i] = skillEquipData[i + 5];
-                        }
-                        skillEquipData[slot] = skillEquipData[14];
-                        *current_keys_raw &= ~InputFlags::UseProsthetic;
+                        return fp_sub_140B2C190(p1, p2);
                     }
-                    return fp_sub_140B2C190(p1, p2);
                 }
             }
 
-            uint32_t slot = skillBasePtr[32] << 1;
             skillEquipData[14] = skillBasePtr[slot];
             if (skillEquipData[14] != skillEquipData[slot]) {
                 skillBasePtr[slot] = EMPTY_SLOT;
@@ -152,19 +155,22 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
 
     if (InputFlags::UseCombatArt == (just_pressed & InputFlags::UseCombatArt)) {
         if (skillBasePtr[32] < CombatArtData.size()) {
-            for (const auto& [vKey, skillId] : CombatArtData[skillBasePtr[32]]) {
-                if ((GetAsyncKeyState(vKey) & 0x8000) != 0) {
-                    skillEquipData[16] = skillId;
-                    skillEquipData[14] = GetEquipRealId(equipBaseAddr, skillEquipData + 16);
-                    if (skillEquipData[14] != skillEquipData[1]) {
-                        skillEquipData[6] = skillBasePtr[1];
-                        skillBasePtr[1] = EMPTY_SLOT;
-                        SetSkillSlot(1, skillEquipData, true);
-                        skillBasePtr[1] = skillEquipData[6];
-                        skillEquipData[1] = skillEquipData[14];
-                        *current_keys_raw &= ~InputFlags::UseCombatArt;
+            uint32_t slot = skillBasePtr[32] << 1;
+            if (skillBasePtr[slot] != EMPTY_SLOT) {
+                for (const auto& [vKey, skillId] : CombatArtData[skillBasePtr[32]]) {
+                    if ((GetAsyncKeyState(vKey) & 0x8000) != 0) {
+                        skillEquipData[16] = skillId;
+                        skillEquipData[14] = GetEquipRealId(equipBaseAddr, skillEquipData + 16);
+                        if (skillEquipData[14] != skillEquipData[1]) {
+                            skillEquipData[6] = skillBasePtr[1];
+                            skillBasePtr[1] = EMPTY_SLOT;
+                            SetSkillSlot(1, skillEquipData, true);
+                            skillBasePtr[1] = skillEquipData[6];
+                            skillEquipData[1] = skillEquipData[14];
+                            *current_keys_raw &= ~InputFlags::UseCombatArt;
+                        }
+                        return fp_sub_140B2C190(p1, p2);
                     }
-                    return fp_sub_140B2C190(p1, p2);
                 }
             }
 
@@ -201,8 +207,8 @@ void hook_sub_140dd9c60(uint32_t* arg1)
 
 void EnablePlayerSkillChange()
 {
-    std::string configPath = g_INI.GetString("player_skill_change", "config_path", "");
-    skillConfig.reload = g_INI.GetBoolean("player_skill_change", "config_runtime_reload", false);
+    std::string configPath = g_INI.GetString("player_skill_change", "skill_config", "");
+    skillConfig.reload = g_INI.GetBoolean("player_skill_change", "skill_reload", false);
     logEquipSkill = g_INI.GetBoolean("logs", "equip_skill", false);
 
     fs::path curPath = fs::current_path();
