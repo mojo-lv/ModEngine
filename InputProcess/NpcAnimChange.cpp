@@ -29,13 +29,27 @@ static NpcAnimConfig animConfig;
 
 extern INIReader g_INI;
 
-static void LoadAnimConfig()
+void LoadAnimConfig(const fs::path& path, uint32_t characterId)
 {
+    static INIReader config(path.string());
+    if (characterId == 0) return;
+    if (!path.empty()) config = INIReader(path.string());
+    if (config.ParseError()) return;
+
+    std::string section = "";
+    for (const auto& configSection : config.Sections()) {
+        if (configSection.find(std::to_string(characterId)) != std::string::npos) {
+            section = configSection;
+            break;
+        }
+    }
+
+    animMap.clear();
+    directAnimMap.clear();
     size_t start, pos, valSize;
     uint32_t keyAnim, curAnim, newAnim;
-    INIReader config(animConfig.path.string());
-    for (const auto& configKey : config.Keys("")) {
-        std::string valStr = config.GetString("", configKey, "");
+    for (const auto& configKey : config.Keys(section)) {
+        std::string valStr = config.GetString(section, configKey, "");
         if (!valStr.empty()) {
             pos = configKey.find('_');
             if (pos == std::string::npos) {
@@ -103,9 +117,7 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
             auto currentWriteTime = fs::last_write_time(animConfig.path);
             if (animConfig.lastWriteTime != currentWriteTime) {
                 animConfig.lastWriteTime = currentWriteTime;
-                animMap.clear();
-                directAnimMap.clear();
-                LoadAnimConfig();
+                LoadAnimConfig(animConfig.path, *(uint32_t*)(npc + 0x68));
             }
         }
     } else if (arg2 == animState.lastAnim) {
@@ -201,21 +213,29 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
     uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
     if (npcPlayer) {
         uintptr_t npc = *(uintptr_t*)(arg1 + 8);
-        if ((npc == npcPlayer) && enablePlaySpeed) {
-            *(float*)(arg1 + 0xd00) = playSpeed;
+        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
+        uint32_t& hp = *(uint32_t*)(base + 0x130);
+        if ((hp == 1) && (*(uint32_t*)(base + 0x148) == 0)) {
+            int32_t& redDot = *(int32_t*)(base + 0x25c);
+            if (redDot > 0) {
+                redDot--;
+                hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
+            }
         }
 
-        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
-        if (*(uint32_t*)(base + 0x148) == 0) {
-            // Stamina is 0
-            uint32_t& hp = *(uint32_t*)(base + 0x130);
-            if (hp == 1) {
-                int32_t& redDot = *(int32_t*)(base + 0x25c);
-                if (redDot > 0) {
-                    redDot--;
-                    hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
+        if (npc == npcPlayer) {
+            if (enablePlaySpeed) *(float*)(arg1 + 0xd00) = playSpeed;
+
+            uintptr_t playerBase = *(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
+                                        *pWorldChrMan + 0x88) + 0x1ff8) + 0x18);
+            if (hp) {
+                uint32_t playerHp = hp * (*(uint32_t*)(playerBase + 0x134)) / (*(uint32_t*)(base + 0x134));
+                if (playerHp) {
+                    *(uint32_t*)(playerBase + 0x130) = playerHp;
+                    return fp_sub_140b45440(arg1);
                 }
             }
+            *(uint32_t*)(playerBase + 0x130) = 1;
         }
     }
 
@@ -238,7 +258,7 @@ void EnableNpcAnimChange()
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
         animConfig.path = curPath / configPath;
         animConfig.lastWriteTime = fs::last_write_time(animConfig.path);
-        LoadAnimConfig();
+        LoadAnimConfig(animConfig.path, 0);
         if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR), &HookedNpcAnim, NULL) == MH_OK) {
             MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR));
             PatchNpcAnimHook(HOOK_NPC_ANIM_ADDR);

@@ -15,4 +15,5 @@ struct NpcAnimConfig {
     bool reload = false;
 };
 
+void LoadAnimConfig(const fs::path& path, uint32_t characterId);
 void EnableNpcAnimChange();

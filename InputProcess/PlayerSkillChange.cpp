@@ -25,6 +25,8 @@ extern INIReader g_INI;
 
 static void LoadSkillConfig()
 {
+    for (auto& v : CombatArtData) v.clear();
+    for (auto& v : ProstheticData) v.clear();
     uint32_t index, vKey, skillId;
     size_t valSize, start, pos;
     INIReader config(skillConfig.path.string());
@@ -93,8 +95,6 @@ size_t hook_sub_140B2C190(uintptr_t p1, void* p2)
             auto currentWriteTime = fs::last_write_time(skillConfig.path);
             if (skillConfig.lastWriteTime != currentWriteTime) {
                 skillConfig.lastWriteTime = currentWriteTime;
-                for (auto& v : CombatArtData) v.clear();
-                for (auto& v : ProstheticData) v.clear();
                 LoadSkillConfig();
             }
         }
@@ -207,8 +207,8 @@ void hook_sub_140dd9c60(uint32_t* arg1)
 
 void EnablePlayerSkillChange()
 {
-    std::string configPath = g_INI.GetString("player_skill_change", "skill_config", "");
-    skillConfig.reload = g_INI.GetBoolean("player_skill_change", "skill_reload", false);
+    std::string configPath = g_INI.GetString("player_skill_change", "player_skill_config", "");
+    skillConfig.reload = g_INI.GetBoolean("player_skill_change", "player_skill_reload", false);
     logEquipSkill = g_INI.GetBoolean("logs", "equip_skill", false);
 
     fs::path curPath = fs::current_path();
