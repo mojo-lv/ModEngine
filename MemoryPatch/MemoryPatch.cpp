@@ -173,3 +173,10 @@ void PatchNpcTurnHook(uintptr_t hookAddress)
     bytes = {0x48, 0x89, 0xc2, 0x90};
     PatchMemory(hookAddress + 5, bytes);
 }
+
+void PatchHpDisplayHook(uintptr_t hookAddress)
+{
+    // call
+    std::vector<uint8_t> bytes = {0xE8};
+    PatchMemory(hookAddress, bytes);
+}

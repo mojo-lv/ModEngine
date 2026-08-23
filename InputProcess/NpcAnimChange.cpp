@@ -5,6 +5,7 @@
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
 constexpr uintptr_t HOOK_NPC_TURN_ADDR = 0x1407daabc;
+constexpr uintptr_t HOOK_HP_DISPLAY_ADDR = 0x140e34fd2;
 
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
@@ -36,11 +37,16 @@ void LoadAnimConfig(const fs::path& path, uint32_t characterId)
     if (!path.empty()) config = INIReader(path.string());
     if (config.ParseError()) return;
 
+    size_t pos;
     std::string section = "";
+    std::string idStr = std::to_string(characterId);
     for (const auto& configSection : config.Sections()) {
-        if (configSection.find(std::to_string(characterId)) != std::string::npos) {
-            section = configSection;
-            break;
+        pos = configSection.find(idStr);
+        if (pos != std::string::npos) {
+            if (pos == 0 || configSection[pos - 1] == '_') {
+                section = configSection;
+                break;
+            }
         }
     }
 
@@ -213,33 +219,37 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
     uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
     if (npcPlayer) {
         uintptr_t npc = *(uintptr_t*)(arg1 + 8);
-        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
-        uint32_t& hp = *(uint32_t*)(base + 0x130);
-        if ((hp == 1) && (*(uint32_t*)(base + 0x148) == 0)) {
-            int32_t& redDot = *(int32_t*)(base + 0x25c);
-            if (redDot > 0) {
-                redDot--;
-                hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
-            }
+        if ((npc == npcPlayer) && enablePlaySpeed) {
+            *(float*)(arg1 + 0xd00) = playSpeed;
         }
 
-        if (npc == npcPlayer) {
-            if (enablePlaySpeed) *(float*)(arg1 + 0xd00) = playSpeed;
-
-            uintptr_t playerBase = *(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
-                                        *pWorldChrMan + 0x88) + 0x1ff8) + 0x18);
-            if (hp) {
-                uint32_t playerHp = hp * (*(uint32_t*)(playerBase + 0x134)) / (*(uint32_t*)(base + 0x134));
-                if (playerHp) {
-                    *(uint32_t*)(playerBase + 0x130) = playerHp;
-                    return fp_sub_140b45440(arg1);
+        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
+        if (*(uint32_t*)(base + 0x148) == 0) {
+            // Stamina is 0
+            uint32_t& hp = *(uint32_t*)(base + 0x130);
+            if (hp == 1) {
+                int32_t& redDot = *(int32_t*)(base + 0x25c);
+                if (redDot > 0) {
+                    redDot--;
+                    hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
                 }
             }
-            *(uint32_t*)(playerBase + 0x130) = 1;
         }
     }
 
     return fp_sub_140b45440(arg1);
+}
+
+uint32_t HookedHpDisplay(uintptr_t arg1)
+{
+    uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
+    if (npcPlayer) {
+        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npcPlayer + 0x1ff8) + 0x18);
+        uint32_t hp = (*(uint32_t*)(base + 0x130)) * (*(uint32_t*)(arg1 + 0x134))
+                    / (*(uint32_t*)(base + 0x134));
+        return (hp > 0) ? hp : 1;
+    }
+    return *(uint32_t*)(arg1 + 0x130);
 }
 
 void EnableNpcAnimChange()
@@ -275,6 +285,11 @@ void EnableNpcAnimChange()
         PatchNpcTurnHook(HOOK_NPC_TURN_ADDR);
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR), &HookedHpDisplay, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR));
+        PatchHpDisplayHook(HOOK_HP_DISPLAY_ADDR);
     }
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
