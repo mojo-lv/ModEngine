@@ -52,7 +52,7 @@ void LoadAnimConfig(const fs::path& path, uint32_t characterId)
 
     animMap.clear();
     directAnimMap.clear();
-    size_t start, pos, valSize;
+    size_t start, valSize;
     uint32_t keyAnim, curAnim, newAnim;
     for (const auto& configKey : config.Keys(section)) {
         std::string valStr = config.GetString(section, configKey, "");
