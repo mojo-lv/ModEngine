@@ -17,6 +17,9 @@ static t_fma fp_sub_1407daf30 = nullptr;
 typedef uintptr_t(*t_sub_140b45440)(uintptr_t);
 static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 
+typedef void(*t_sub_140a58ce0)(uintptr_t, uintptr_t);
+static t_sub_140a58ce0 fp_sub_140a58ce0 = nullptr;
+
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
@@ -30,7 +33,7 @@ static NpcAnimConfig animConfig;
 
 extern INIReader g_INI;
 
-void LoadAnimConfig(const fs::path& path, uint32_t characterId)
+static void LoadAnimConfig(const fs::path& path, uint32_t characterId)
 {
     static INIReader config(path.string());
     if (characterId == 0) return;
@@ -91,31 +94,28 @@ void LoadAnimConfig(const fs::path& path, uint32_t characterId)
 uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
 {
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x300);
-    if (animState.npc != npc) {
-        animState.npc = npc;
-        animState.lastAnim = NpcAnimState::INVALID_ANIM;
-        animState.inherit = false;
-    }
-
     uintptr_t base_ptr = *(uintptr_t*)(npc + 0x1ff8);
     uintptr_t result = *(uintptr_t*)(base_ptr + 0x80);
     uint32_t* pAnim = (uint32_t*)(result + 0x170);
 
-    uint32_t curAnim = 0;
+    if (animState.npc != npc) {
+        animState.npc = npc;
+        animState.lastKeyAnim = NpcAnimState::INVALID_ANIM;
+        animState.inherit = false;
+        *pAnim = NpcAnimState::INVALID_ANIM;
+        return result;
+    }
+
+    uint32_t curAnim = NpcAnimState::INVALID_ANIM;
     uintptr_t animPtr = *(uintptr_t*)(base_ptr + 0x10);
     for (int i = *(uint32_t*)(animPtr + 0xf0); i >= 0; --i) {
         curAnim = *(uint32_t*)(animPtr + i * 0x14 + 0x20) % 1000000;
         if ((curAnim < 9000) || (curAnim > 9999)) break;
     }
 
-
     if (arg2 == NpcAnimState::INVALID_ANIM) {
         if (*pAnim != NpcAnimState::INVALID_ANIM) {
-            if (animState.inherit) {
-                if (*pAnim == curAnim) {
-                    *pAnim = NpcAnimState::INVALID_ANIM;
-                }
-            } else {
+            if (!animState.inherit || curAnim == *pAnim) {
                 *pAnim = NpcAnimState::INVALID_ANIM;
             }
         } else if (animConfig.reload && (animConfig.reloadDelay++ > animConfig.DELAY_MAX)) {
@@ -126,11 +126,9 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
                 LoadAnimConfig(animConfig.path, *(uint32_t*)(npc + 0x68));
             }
         }
-    } else if (arg2 == animState.lastAnim) {
-        if (*pAnim != NpcAnimState::INVALID_ANIM) {
-            if (*pAnim == curAnim) {
-                *pAnim = NpcAnimState::INVALID_ANIM;
-            }
+    } else if (arg2 == animState.lastKeyAnim) {
+        if (curAnim == *pAnim) {
+            *pAnim = NpcAnimState::INVALID_ANIM;
         }
     } else {
         auto it = animMap.find({arg2, curAnim});
@@ -155,7 +153,7 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
         }
     }
 
-    animState.lastAnim = arg2;
+    animState.lastKeyAnim = arg2;
     return result;
 }
 
@@ -240,14 +238,34 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
     return fp_sub_140b45440(arg1);
 }
 
+void hook_sub_140a58ce0(uintptr_t arg1, uintptr_t arg2)
+{
+    uintptr_t& npc = *(uintptr_t*)(arg1 + 0x160);
+    uintptr_t prevNpc = npc;
+    fp_sub_140a58ce0(arg1, arg2);
+
+    if (npc != prevNpc) {
+        if (prevNpc) {
+            // Fix bullet bug
+            *(uint8_t*)(prevNpc + 0x1070) = 0;
+        }
+        if (npc) {
+            LoadAnimConfig("", *(uint32_t*)(npc + 0x68));
+
+            // Set No Goods Consume for NpcAnimCancel
+            // Set No ResourceItem Consume for NpcTurn
+            *(uint16_t*)(npc + 0x1f42) |= 0x0110;
+        }
+    }
+}
+
 uint32_t HookedHpDisplay(uintptr_t arg1)
 {
     uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
     if (npcPlayer) {
         uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npcPlayer + 0x1ff8) + 0x18);
-        uint32_t hp = (*(uint32_t*)(base + 0x130)) * (*(uint32_t*)(arg1 + 0x134))
+        return (*(uint32_t*)(base + 0x130)) * (*(uint32_t*)(arg1 + 0x134))
                     / (*(uint32_t*)(base + 0x134));
-        return (hp > 0) ? hp : 1;
     }
     return *(uint32_t*)(arg1 + 0x130);
 }
@@ -294,4 +312,7 @@ void EnableNpcAnimChange()
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140b45440));
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x140a58ce0), &hook_sub_140a58ce0, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_140a58ce0));
 }

@@ -3,7 +3,7 @@
 struct NpcAnimState {
     static constexpr uint32_t INVALID_ANIM = 0xFFFFFFFF;
     uintptr_t npc = 0;
-    uint32_t lastAnim = INVALID_ANIM;
+    uint32_t lastKeyAnim = INVALID_ANIM;
     bool inherit = false;
 };
 
@@ -15,5 +15,4 @@ struct NpcAnimConfig {
     bool reload = false;
 };
 
-void LoadAnimConfig(const fs::path& path, uint32_t characterId);
 void EnableNpcAnimChange();

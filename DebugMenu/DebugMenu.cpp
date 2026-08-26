@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "MemoryPatch/MemoryPatch.h"
-#include "InputProcess/NpcAnimChange.h"
 #include "DebugMenu.h"
 
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
@@ -93,17 +92,7 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
     static uintptr_t* npcCtrlPtr = nullptr;
 
     if (g_CamState.npc != npc) {
-        if (g_CamState.npc) {
-            // Fix bullet bug
-            *(uint8_t*)(g_CamState.npc + 0x1070) = 0;
-        }
         if (npc) {
-            LoadAnimConfig("", *(uint32_t*)(npc + 0x68));
-
-            // Set No Goods Consume for NpcAnimCancel
-            // Set No ResourceItem Consume for NpcTurn
-            *(uint16_t*)(npc + 0x1f42) |= 0x0110;
-
             npcCtrlPtr = (uintptr_t*)(*(uintptr_t*)(npc + 0x50) + 0x358);
             if (camMode) *npcCtrlPtr = 0; // Don't control NPC
         }
