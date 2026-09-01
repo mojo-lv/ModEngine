@@ -62,13 +62,9 @@ void ShutdownImGui()
 
 static void DrawDebugMenu()
 {
-    uintptr_t ptr = *(uintptr_t*)(*(uintptr_t*)(0x143f3b400) + 0xa0);
-    float offsetX = *(float*)(ptr + 0x118);
-    float offsetY = *(float*)(ptr + 0x11c);
-
     auto* vp = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x + offsetX, vp->Pos.y + offsetY));
-    ImGui::SetNextWindowSize(ImVec2(vp->Size.x - offsetX, vp->Size.y - offsetY));
+    ImGui::SetNextWindowPos(vp->Pos);
+    ImGui::SetNextWindowSize(vp->Size);
     ImGui::Begin("DebugMenu", nullptr, FLAGS);
 
     if (g_log_debug_menu) {
@@ -77,6 +73,10 @@ static void DrawDebugMenu()
         last_state = state;
     }
 
+    uintptr_t ptr = *(uintptr_t*)(*(uintptr_t*)(0x143f3b400) + 0xa0);
+    float offsetX = *(float*)(ptr + 0x118);
+    float offsetY = *(float*)(ptr + 0x11c);
+
     for (int i = 0; i < g_menuList.size(); ++i) {
         if (log_triggered) {
             std::cout << "[debug_menu] " << g_menuList[i].text.c_str() << std::endl;
@@ -84,7 +84,7 @@ static void DrawDebugMenu()
 
         ImGui::GetWindowDrawList()->AddText(
             gCtx.pMenuFont, g_fontConfig.size,
-            ImVec2(g_menuList[i].fX, g_menuList[i].fY),
+            ImVec2(g_menuList[i].fX + offsetX, g_menuList[i].fY + offsetY),
             ImColor(g_menuSelectedIndex == i ? g_fontConfig.color : IM_COL32_WHITE),
             g_menuList[i].text.c_str(), 0, 0.0f, 0);
     }
