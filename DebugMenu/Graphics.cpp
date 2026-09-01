@@ -62,9 +62,13 @@ void ShutdownImGui()
 
 static void DrawDebugMenu()
 {
+    uintptr_t ptr = *(uintptr_t*)(*(uintptr_t*)(0x143f3b400) + 0xa0);
+    float offsetX = *(float*)(ptr + 0x118);
+    float offsetY = *(float*)(ptr + 0x11c);
+
     auto* vp = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(vp->Pos);
-    ImGui::SetNextWindowSize(vp->Size);
+    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x + offsetX, vp->Pos.y + offsetY));
+    ImGui::SetNextWindowSize(ImVec2(vp->Size.x - offsetX, vp->Size.y - offsetY));
     ImGui::Begin("DebugMenu", nullptr, FLAGS);
 
     if (g_log_debug_menu) {
