@@ -20,6 +20,7 @@ static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 typedef void(*t_sub_140a58ce0)(uintptr_t, uintptr_t);
 static t_sub_140a58ce0 fp_sub_140a58ce0 = nullptr;
 
+static std::unordered_set<uint32_t> modAnimSet;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 
@@ -33,29 +34,37 @@ static NpcAnimConfig animConfig;
 
 extern INIReader g_INI;
 
-static void LoadAnimConfig(const fs::path& path, uint32_t characterId)
+static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t modAnim)
 {
     static INIReader config(path.string());
     if (characterId == 0) return;
     if (!path.empty()) config = INIReader(path.string());
     if (config.ParseError()) return;
 
-    size_t pos;
     std::string section = "";
-    std::string idStr = std::to_string(characterId);
-    for (const auto& configSection : config.Sections()) {
-        pos = configSection.find(idStr);
-        if (pos != std::string::npos) {
-            if (pos == 0 || configSection[pos - 1] == '_') {
-                section = configSection;
-                break;
+    if (modAnim == 0) {
+        modAnimSet.clear();
+        animMap.clear();
+        directAnimMap.clear();
+
+        std::string idStr = std::to_string(characterId);
+        size_t idLen = idStr.size();
+        size_t secLen;
+        for (const auto& configSection : config.Sections()) {
+            secLen = configSection.size();
+            if (secLen >= idLen && configSection.compare(0, idLen, idStr) == 0) {
+                if (secLen == idLen) {
+                    section = configSection;
+                } else if (secLen > (idLen + 1) && (configSection[idLen] == '_')) {
+                    modAnimSet.emplace(std::stoul(configSection.substr(idLen + 1)));
+                }
             }
         }
+    } else {
+        section = std::to_string(characterId) + "_" + std::to_string(modAnim);
     }
 
-    animMap.clear();
-    directAnimMap.clear();
-    size_t start, valSize;
+    size_t pos, start, valSize;
     uint32_t keyAnim, curAnim, newAnim;
     for (const auto& configKey : config.Keys(section)) {
         std::string valStr = config.GetString(section, configKey, "");
@@ -79,9 +88,9 @@ static void LoadAnimConfig(const fs::path& path, uint32_t characterId)
                 if (pos > start) {
                     newAnim = std::stoul(valStr.substr(start, pos - start));
                     if (curAnim) {
-                        animMap.try_emplace({keyAnim, curAnim}, newAnim);
+                        animMap.insert_or_assign({keyAnim, curAnim}, newAnim);
                     } else {
-                        directAnimMap.try_emplace(keyAnim, newAnim);
+                        directAnimMap.insert_or_assign(keyAnim, newAnim);
                     }
                     curAnim = newAnim;
                 }
@@ -113,6 +122,12 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
         if ((curAnim < 9000) || (curAnim > 9999)) break;
     }
 
+    if (modAnimSet.count(curAnim)) {
+        modAnimSet.erase(curAnim);
+        LoadAnimConfig("", *(uint32_t*)(npc + 0x68), curAnim);
+        return result;
+    }
+
     if (arg2 == NpcAnimState::INVALID_ANIM) {
         if (*pAnim != NpcAnimState::INVALID_ANIM) {
             if (!animState.inherit || curAnim == *pAnim) {
@@ -123,7 +138,8 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
             auto currentWriteTime = fs::last_write_time(animConfig.path);
             if (animConfig.lastWriteTime != currentWriteTime) {
                 animConfig.lastWriteTime = currentWriteTime;
-                LoadAnimConfig(animConfig.path, *(uint32_t*)(npc + 0x68));
+                LoadAnimConfig(animConfig.path, *(uint32_t*)(npc + 0x68), 0);
+                return result;
             }
         }
     } else if (arg2 == animState.lastKeyAnim) {
@@ -250,7 +266,7 @@ void hook_sub_140a58ce0(uintptr_t arg1, uintptr_t arg2)
             *(uint8_t*)(prevNpc + 0x1070) = 0;
         }
         if (npc) {
-            LoadAnimConfig("", *(uint32_t*)(npc + 0x68));
+            LoadAnimConfig("", *(uint32_t*)(npc + 0x68), 0);
 
             // Set No Goods Consume for NpcAnimCancel
             // Set No ResourceItem Consume for NpcTurn
@@ -278,7 +294,7 @@ void EnableNpcAnimChange()
     playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
 
     if (playSpeed > 0) {
-        turnSpeed = turnSpeed * playSpeed;
+        turnSpeed *= playSpeed;
         enablePlaySpeed = true;
     }
 
@@ -286,7 +302,7 @@ void EnableNpcAnimChange()
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
         animConfig.path = curPath / configPath;
         animConfig.lastWriteTime = fs::last_write_time(animConfig.path);
-        LoadAnimConfig(animConfig.path, 0);
+        LoadAnimConfig(animConfig.path, 0, 0);
         if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR), &HookedNpcAnim, NULL) == MH_OK) {
             MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_ANIM_ADDR));
             PatchNpcAnimHook(HOOK_NPC_ANIM_ADDR);

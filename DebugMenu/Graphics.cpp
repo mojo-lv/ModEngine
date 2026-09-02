@@ -86,7 +86,7 @@ static void DrawDebugMenu()
             gCtx.pMenuFont, g_fontConfig.size,
             ImVec2(g_menuList[i].fX + offsetX, g_menuList[i].fY + offsetY),
             ImColor(g_menuSelectedIndex == i ? g_fontConfig.color : IM_COL32_WHITE),
-            g_menuList[i].text.c_str(), 0, 0.0f, 0);
+            g_menuList[i].text.c_str(), nullptr, 0.0f, nullptr);
     }
     g_menuList.clear();
     g_menuSelectedIndex = -1;

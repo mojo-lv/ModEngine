@@ -18,6 +18,7 @@
 #include <iostream>
 #include <filesystem>  // C++17
 #include <algorithm>
+#include <unordered_set>
 #include <unordered_map>
 #include <map>
 
