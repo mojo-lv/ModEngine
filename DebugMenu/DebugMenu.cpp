@@ -17,6 +17,9 @@ static uint8_t* const freezePtr = reinterpret_cast<uint8_t*>(0x143d7acb2);
 typedef uintptr_t(*t_addNPC)(uintptr_t, uintptr_t*);
 static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
 
+typedef bool(*t_sub_1419f8620)(uintptr_t, void*, int32_t);
+static t_sub_1419f8620 fp_sub_1419f8620 = nullptr;
+
 static DbgCamState g_CamState;
 
 std::vector<MenuEntry> g_menuList;
@@ -139,6 +142,12 @@ bool HookedDbgCamFree(void* arg1, uint32_t* arg2)
     return true;
 }
 
+bool hook_sub_1419f8620(uintptr_t arg1, void* arg2, int32_t arg3)
+{
+    if (arg1 == 2) return false;
+    return fp_sub_1419f8620(arg1, arg2, arg3);
+}
+
 void EnableDebugMenu()
 {
     g_log_debug_menu = g_INI.GetBoolean("logs", "debug_menu", false);
@@ -193,4 +202,7 @@ void EnableDebugMenu()
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_DBG_CAM_FREE_F_ADDR));
         PatchDbgCamFreeHook(HOOK_DBG_CAM_FREE_F_ADDR, false);
     }
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x1419f8620), &hook_sub_1419f8620, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_1419f8620));
 }
