@@ -23,4 +23,5 @@ extern std::vector<MenuEntry> g_menuList;
 extern int g_menuSelectedIndex;
 extern FontConfig g_fontConfig;
 extern bool g_log_debug_menu;
-void EnableDebugMenu();
+
+void EnableDebugMenu(const INIReader& ini, const fs::path& curPath);

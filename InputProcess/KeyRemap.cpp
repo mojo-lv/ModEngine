@@ -21,7 +21,6 @@ static std::map<std::pair<uint32_t, uint32_t>,
                 std::pair<uint32_t, uint32_t>> A2ARemapData;
 
 static bool logKeyRemap = false;
-extern INIReader g_INI;
 
 int64_t hook_D2DMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uintptr_t arg5)
 {
@@ -61,19 +60,19 @@ int64_t hook_A2AMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     return fp_A2AMapping(arg1, arg2, arg3, arg4);
 }
 
-void EnableKeyRemap()
+void EnableKeyRemap(const INIReader& ini)
 {
-    logKeyRemap = g_INI.GetBoolean("logs", "key_remap", false);
+    logKeyRemap = ini.GetBoolean("logs", "key_remap", false);
 
     size_t pos;
     uint32_t firstKey, secondKey, firstVal, secondVal;
-    for (const auto& key : g_INI.Keys("key_remap")) {
+    for (const auto& key : ini.Keys("key_remap")) {
         pos = key.find('_');
         if (pos != std::string::npos) {
             firstKey = static_cast<uint32_t>(std::stoul(key.substr(0, pos), nullptr, 16));
             secondKey = static_cast<uint32_t>(std::stoul(key.substr(pos + 1), nullptr, 16));
             
-            std::string valStr = g_INI.GetString("key_remap", key, "");
+            std::string valStr = ini.GetString("key_remap", key, "");
             firstVal = static_cast<uint32_t>(std::stoul(valStr, nullptr, 16));
             pos = valStr.find('_');
             if (pos != std::string::npos) {

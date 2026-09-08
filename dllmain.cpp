@@ -20,20 +20,21 @@ static t_DirectInput8Create fpDInput8Create = nullptr;
 typedef int64_t(*t_SteamAPI_Init)();
 static t_SteamAPI_Init fpSteamInit = nullptr;
 
-std::vector<HMODULE> g_LoadedDLLs;
-INIReader g_INI("mod_engine.ini");
+static fs::path g_CurPath;
+static std::vector<HMODULE> g_LoadedDLLs;
+static INIReader g_INI("mod_engine.ini");
 
 static void ApplyPostUnpackHooks()
 {
     if (g_INI.HasSection("debug_menu")) {
-        EnableDebugMenu();
+        EnableDebugMenu(g_INI, g_CurPath);
         CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
     }
-    if (g_INI.HasSection("files")) ApplyFilesMod();
-    if (g_INI.HasSection("key_remap")) EnableKeyRemap();
-    if (g_INI.HasSection("npc_anim_change")) EnableNpcAnimChange();
-    if (g_INI.HasSection("player_skill_change")) EnablePlayerSkillChange();
-    if (g_INI.HasSection("memory")) ApplyMemoryPatch();
+    if (g_INI.HasSection("files")) ApplyFilesMod(g_INI, g_CurPath, g_LoadedDLLs);
+    if (g_INI.HasSection("key_remap")) EnableKeyRemap(g_INI);
+    if (g_INI.HasSection("npc_anim_change")) EnableNpcAnimChange(g_INI, g_CurPath);
+    if (g_INI.HasSection("player_skill_change")) EnablePlayerSkillChange(g_INI, g_CurPath);
+    if (g_INI.HasSection("memory")) ApplyMemoryPatch(g_INI);
 
     MH_EnableHook(MH_ALL_HOOKS);
 }
@@ -79,9 +80,7 @@ static void OnAttach()
 static void OnDetach()
 {
     for (auto dll : g_LoadedDLLs) {
-        if (dll) {
-            FreeLibrary(dll);
-        }
+        if (dll) FreeLibrary(dll);
     }
 
     MH_DisableHook(MH_ALL_HOOKS);
@@ -89,19 +88,19 @@ static void OnDetach()
     ShutdownImGui();
 }
 
-static bool LoadConfig(HMODULE hModule) {
+static int LoadConfig(HMODULE hModule) {
     int error = g_INI.ParseError();
-    if (error == 0) {
-        return true;
-    } else if (error > 0) {
-        return false;
+    if (error >= 0) {
+        g_CurPath = fs::current_path();
+        return error;
     }
 
-    char path[MAX_PATH] = {0};
-    GetModuleFileNameA(hModule, path, MAX_PATH);
-    if (char* lastSlash = strrchr(path, '\\')) *(lastSlash + 1) = '\0';
-    g_INI = INIReader(std::string(path) + "mod_engine.ini");
-    return !g_INI.ParseError();
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(nullptr, path, MAX_PATH);
+    if (wchar_t* p = wcsrchr(path, L'\\')) *(p + 1) = '\0';
+    g_CurPath = fs::path(path);
+    g_INI = INIReader((g_CurPath / "mod_engine.ini").string());
+    return g_INI.ParseError();
 }
 
 // The main export that is called by the game.
@@ -121,7 +120,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             DisableThreadLibraryCalls(hModule);
 
             FILE *stream;
-            if (!LoadConfig(hModule)) {
+            if (LoadConfig(hModule)) {
                 freopen_s(&stream, "mod_engine.log", "w", stdout);
                 std::cout << "Can't load 'mod_engine.ini'" << std::endl;
                 std::cout << g_INI.ParseErrorMessage() << std::endl;

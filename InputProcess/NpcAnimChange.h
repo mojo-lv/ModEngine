@@ -15,4 +15,4 @@ struct NpcAnimConfig {
     bool reload = false;
 };
 
-void EnableNpcAnimChange();
+void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath);

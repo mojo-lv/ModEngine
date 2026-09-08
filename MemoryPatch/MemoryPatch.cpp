@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "MemoryPatch.h"
 
-extern INIReader g_INI;
-
 static void PatchMemory(uintptr_t targetAddress, const std::vector<uint8_t>& patchBytes)
 {
     if (!patchBytes.empty()) {
@@ -14,14 +12,14 @@ static void PatchMemory(uintptr_t targetAddress, const std::vector<uint8_t>& pat
     }
 }
 
-void ApplyMemoryPatch()
+void ApplyMemoryPatch(const INIReader& ini)
 {
     uintptr_t baseAddress = (uintptr_t)GetModuleHandleW(nullptr);
 
     size_t offset, start, pos, valSize;
     uint8_t byte;
-    for (const auto& key : g_INI.Keys("memory")) {
-        std::string valStr = g_INI.GetString("memory", key, "");
+    for (const auto& key : ini.Keys("memory")) {
+        std::string valStr = ini.GetString("memory", key, "");
         if (!valStr.empty()) {
             std::vector<uint8_t> bytes;
             valSize = valStr.size();

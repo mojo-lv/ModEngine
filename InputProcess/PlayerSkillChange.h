@@ -22,4 +22,4 @@ struct PlayerSkillConfig {
     bool reload = false;
 };
 
-void EnablePlayerSkillChange();
+void EnablePlayerSkillChange(const INIReader& ini, const fs::path& curPath);

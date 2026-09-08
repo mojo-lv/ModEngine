@@ -18,9 +18,6 @@ static size_t g_cur_len;
 static std::wstring g_save_path;
 static bool g_skip_cutscenes;
 
-extern std::vector<HMODULE> g_LoadedDLLs;
-extern INIReader g_INI;
-
 static bool ScanModsDir(const fs::path& modsDir)
 {
     if (!fs::exists(modsDir) || !fs::is_directory(modsDir)) {
@@ -62,12 +59,12 @@ static bool ScanModsDir(const fs::path& modsDir)
     return true;
 }
 
-static void ScanDllsDir(const fs::path& dllsDir)
+static void ScanDllsDir(const fs::path& dllsDir, std::vector<HMODULE>& loadedDLLs)
 {
     if (fs::exists(dllsDir) && fs::is_directory(dllsDir)) {
         for (const auto& p : fs::directory_iterator(dllsDir)) {
             if (!p.is_directory() && (p.path().filename().wstring().front() != L'_')) {
-                g_LoadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
+                loadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
             }
         }
     }
@@ -148,26 +145,25 @@ size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
     return fpGetSekiroVASize(arg1, arg2);
 }
 
-void ApplyFilesMod()
+void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HMODULE>& loadedDLLs)
 {
-    std::string dlls = g_INI.GetString("files", "dlls", "");
-    std::string mods = g_INI.GetString("files", "mods", "");
-    std::string save = g_INI.GetString("files", "save", "");
-    g_skip_cutscenes = g_INI.GetBoolean("files", "skip_cutscenes", false);
+    std::string dlls = ini.GetString("files", "dlls", "");
+    std::string mods = ini.GetString("files", "mods", "");
+    std::string save = ini.GetString("files", "save", "");
+    g_skip_cutscenes = ini.GetBoolean("files", "skip_cutscenes", false);
 
     size_t size;
-    for (const auto& key : g_INI.Keys("virtual_alloc_size")) {
-        size = g_INI.GetUnsigned64("virtual_alloc_size", key, 0);
+    for (const auto& key : ini.Keys("virtual_alloc_size")) {
+        size = ini.GetUnsigned64("virtual_alloc_size", key, 0);
         if (size != 0) {
             va_size[std::wstring(key.begin(), key.end())] = size;
         }
     }
 
-    fs::path curPath = fs::current_path();
     g_cur_len = curPath.wstring().length();
 
     if (!dlls.empty()) {
-        ScanDllsDir(curPath / dlls);
+        ScanDllsDir(curPath / dlls, loadedDLLs);
     }
 
     if (!mods.empty() && ScanModsDir(curPath / mods)) {

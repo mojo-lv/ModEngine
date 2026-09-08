@@ -21,8 +21,6 @@ static uint32_t skillEquipData[17];
 static PlayerSkillConfig skillConfig;
 static bool logEquipSkill = false;
 
-extern INIReader g_INI;
-
 static void LoadSkillConfig()
 {
     for (auto& v : CombatArtData) v.clear();
@@ -205,13 +203,12 @@ void hook_sub_140dd9c60(uint32_t* arg1)
     return fp_sub_140dd9c60(arg1);
 }
 
-void EnablePlayerSkillChange()
+void EnablePlayerSkillChange(const INIReader& ini, const fs::path& curPath)
 {
-    std::string configPath = g_INI.GetString("player_skill_change", "player_skill_config", "");
-    skillConfig.reload = g_INI.GetBoolean("player_skill_change", "player_skill_reload", false);
-    logEquipSkill = g_INI.GetBoolean("logs", "equip_skill", false);
+    std::string configPath = ini.GetString("player_skill_change", "player_skill_config", "");
+    skillConfig.reload = ini.GetBoolean("player_skill_change", "player_skill_reload", false);
+    logEquipSkill = ini.GetBoolean("logs", "equip_skill", false);
 
-    fs::path curPath = fs::current_path();
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
         skillConfig.path = curPath / configPath;
         skillConfig.lastWriteTime = fs::last_write_time(skillConfig.path);

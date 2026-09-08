@@ -30,4 +30,4 @@ typedef BOOL(WINAPI *t_CopyFileW)(
     BOOL    bFailIfExists
 );
 
-void ApplyFilesMod();
+void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HMODULE>& loadedDLLs);

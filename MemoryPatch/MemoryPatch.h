@@ -1,6 +1,6 @@
 #pragma once
 
-void ApplyMemoryPatch();
+void ApplyMemoryPatch(const INIReader& ini);
 void PatchSaveFileCheck();
 
 void PatchDebugMenuHook(uintptr_t hookAddress);

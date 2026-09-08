@@ -1,3 +1,3 @@
 #pragma once
 
-void EnableKeyRemap();
+void EnableKeyRemap(const INIReader& ini);

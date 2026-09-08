@@ -27,8 +27,6 @@ int g_menuSelectedIndex = -1;
 FontConfig g_fontConfig;
 bool g_log_debug_menu = false;
 
-extern INIReader g_INI;
-
 static std::string WideCharToUTF8(const wchar_t* wstr)
 {
     if (!wstr || *wstr == 0) return "";
@@ -148,16 +146,15 @@ bool hook_sub_1419f8620(uintptr_t arg1, void* arg2, int32_t arg3)
     return fp_sub_1419f8620(arg1, arg2, arg3);
 }
 
-void EnableDebugMenu()
+void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
 {
-    g_log_debug_menu = g_INI.GetBoolean("logs", "debug_menu", false);
-    std::string fontPathStr = g_INI.GetString("debug_menu", "font_path", "");
-    float fontSize = g_INI.GetReal("debug_menu", "font_size", 0);
-    ULONG color = g_INI.GetUnsigned("debug_menu", "color", 0);
+    g_log_debug_menu = ini.GetBoolean("logs", "debug_menu", false);
+    std::string fontPathStr = ini.GetString("debug_menu", "font_path", "");
+    float fontSize = ini.GetReal("debug_menu", "font_size", 0);
+    ULONG color = ini.GetUnsigned("debug_menu", "color", 0);
 
-    fs::path fontPath = fs::current_path() / fontPathStr;
-    if (!fontPathStr.empty() && fs::exists(fontPath)) {
-        g_fontConfig.path = fontPath.string();
+    if (!fontPathStr.empty() && fs::exists(curPath / fontPathStr)) {
+        g_fontConfig.path = (curPath / fontPathStr).string();
     }
 
     if (fontSize > 0) {

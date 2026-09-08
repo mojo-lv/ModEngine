@@ -32,8 +32,6 @@ static bool logAnim = false;
 static NpcAnimState animState;
 static NpcAnimConfig animConfig;
 
-extern INIReader g_INI;
-
 static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t modAnim)
 {
     static INIReader config(path.string());
@@ -286,19 +284,18 @@ uint32_t HookedHpDisplay(uintptr_t arg1)
     return *(uint32_t*)(arg1 + 0x130);
 }
 
-void EnableNpcAnimChange()
+void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
 {
-    std::string configPath = g_INI.GetString("npc_anim_change", "npc_anim_config", "");
-    animConfig.reload = g_INI.GetBoolean("npc_anim_change", "npc_anim_reload", false);
-    logAnim = g_INI.GetBoolean("logs", "npc_anim_change", false);
-    playSpeed = g_INI.GetReal("npc_anim_change", "play_speed", 0);
+    std::string configPath = ini.GetString("npc_anim_change", "npc_anim_config", "");
+    animConfig.reload = ini.GetBoolean("npc_anim_change", "npc_anim_reload", false);
+    logAnim = ini.GetBoolean("logs", "npc_anim_change", false);
+    playSpeed = ini.GetReal("npc_anim_change", "play_speed", 0);
 
     if (playSpeed > 0) {
         turnSpeed *= playSpeed;
         enablePlaySpeed = true;
     }
 
-    fs::path curPath = fs::current_path();
     if (!configPath.empty() && fs::exists(curPath / configPath)) {
         animConfig.path = curPath / configPath;
         animConfig.lastWriteTime = fs::last_write_time(animConfig.path);
