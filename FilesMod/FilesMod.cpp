@@ -102,12 +102,12 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
     HANDLE hTemplateFile)
 {
     std::wstring_view path_view(lpFileName);
-    if ((path_view.length() > g_cur_len + 5) && (path_view[g_cur_len + 1] == L'<') && (path_view[g_cur_len + 4] == L'>')) {
-        std::wstring index_key(path_view.substr(g_cur_len + 2, 2));
+    if ((path_view.length() > g_cur_len + 4) && (path_view[g_cur_len] == L'<') && (path_view[g_cur_len + 3] == L'>')) {
+        std::wstring index_key(path_view.substr(g_cur_len + 1, 2));
         auto it = index_to_mod.find(index_key);
         if (it != index_to_mod.end()) {
             std::wstring new_path = it->second;
-            new_path.append(path_view.substr(g_cur_len + 5));
+            new_path.append(path_view.substr(g_cur_len + 4));
             return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                 dwFlagsAndAttributes, hTemplateFile);
         }
@@ -161,6 +161,9 @@ void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HM
     }
 
     g_cur_len = curPath.wstring().length();
+    if (curPath.wstring().back() != L'\\') {
+        g_cur_len++;
+    }
 
     if (!dlls.empty()) {
         ScanDllsDir(curPath / dlls, loadedDLLs);
