@@ -7,6 +7,7 @@
 #include "InputProcess/KeyRemap.h"
 #include "InputProcess/NpcAnimChange.h"
 #include "InputProcess/PlayerSkillChange.h"
+#include "Misc/Misc.h"
 
 typedef HRESULT(WINAPI *t_DirectInput8Create)(
     HINSTANCE hinst,
@@ -35,7 +36,8 @@ static void ApplyPostUnpackHooks()
     if (g_INI.HasSection("npc_anim_change")) EnableNpcAnimChange(g_INI, g_CurPath);
     if (g_INI.HasSection("player_skill_change")) EnablePlayerSkillChange(g_INI, g_CurPath);
     if (g_INI.HasSection("memory")) ApplyMemoryPatch(g_INI);
-
+    
+    ApplyMisc(g_INI);
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
@@ -88,7 +90,7 @@ static void OnDetach()
     ShutdownImGui();
 }
 
-static int LoadConfig(HMODULE hModule) {
+static int LoadConfig() {
     int error = g_INI.ParseError();
     if (error >= 0) {
         g_CurPath = fs::current_path();
@@ -120,7 +122,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             DisableThreadLibraryCalls(hModule);
 
             FILE *stream;
-            if (LoadConfig(hModule)) {
+            if (LoadConfig()) {
                 freopen_s(&stream, "mod_engine.log", "w", stdout);
                 std::cout << "Can't load 'mod_engine.ini'" << std::endl;
                 std::cout << g_INI.ParseErrorMessage() << std::endl;

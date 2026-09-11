@@ -178,3 +178,32 @@ void PatchHpDisplayHook(uintptr_t hookAddress)
     std::vector<uint8_t> bytes = {0xE8};
     PatchMemory(hookAddress, bytes);
 }
+
+void PatchOnlineClient(uint64_t lobbyId)
+{
+    // jmp short 0x1408e4929
+    std::vector<uint8_t> bytes = {0xeb, 0x27};
+    PatchMemory(0x1408e4900, bytes);
+
+    // mov al, bl; xor al, 0x1
+    bytes = {0x88, 0xd8, 0x34, 0x01};
+    PatchMemory(0x141be071b, bytes);
+
+    // jmp short 0x141c0eb69
+    bytes = {0xeb, 0x17};
+    PatchMemory(0x141c0eb50, bytes);
+
+    /*  mov rdi, rcx
+        mov rax, 0000000000000000
+        mov qword [rcx+0x3e8], rax
+        jmp short 0x141c0cb37  */
+    bytes = {0x48, 0x8b, 0xf9,
+            0x48, 0xb8, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0x81, 0xe8, 0x03, 0x00, 0x00,
+            0xeb, 0x0b};
+    for (size_t i = 0; i < 8; ++i) {
+        bytes[i + 5] = static_cast<uint8_t>((lobbyId >> (i * 8)) & 0xFF);
+    }
+    PatchMemory(0x141c0cb16, bytes);
+}

@@ -29,6 +29,7 @@ set(PROJECT_SOURCES
     InputProcess/NpcAnimChange.cpp
     InputProcess/PlayerSkillChange.cpp
     MemoryPatch/MemoryPatch.cpp
+    Misc/Misc.cpp
 )
 
 # 定义第三方库ImGui的源文件列表

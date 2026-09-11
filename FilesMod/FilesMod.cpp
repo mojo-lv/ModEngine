@@ -2,17 +2,14 @@
 #include "MemoryPatch/MemoryPatch.h"
 #include "FilesMod.h"
 
-constexpr uintptr_t HOOK_GET_SEKIRO_VA_SIZE_ADDR = 0x14115CCC0;
 constexpr uintptr_t HOOK_GET_SEKIRO_PATH_ADDR = 0x1401C76D0;
 
-static t_GetSekiroVASize fpGetSekiroVASize = nullptr;
 static t_GetSekiroPath fpGetSekiroPath = nullptr;
 static t_CreateFileW fpCreateFileW = nullptr;
 static t_CopyFileW fpCopyFileW = nullptr;
 
 static std::unordered_map<std::wstring, std::wstring> rel_to_index;
 static std::unordered_map<std::wstring, std::wstring> index_to_mod;
-static std::unordered_map<std::wstring, size_t> va_size;
 
 static size_t g_cur_len;
 static std::wstring g_save_path;
@@ -134,31 +131,12 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
 
-size_t HookedGetSekiroVASize(LPCWSTR arg1, size_t arg2)
-{
-    std::wstring key(arg1);
-    auto it = va_size.find(key);
-    if (it != va_size.end()) {
-        return it->second;
-    }
-
-    return fpGetSekiroVASize(arg1, arg2);
-}
-
 void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HMODULE>& loadedDLLs)
 {
     std::string dlls = ini.GetString("files", "dlls", "");
     std::string mods = ini.GetString("files", "mods", "");
     std::string save = ini.GetString("files", "save", "");
     g_skip_cutscenes = ini.GetBoolean("files", "skip_cutscenes", false);
-
-    size_t size;
-    for (const auto& key : ini.Keys("virtual_alloc_size")) {
-        size = ini.GetUnsigned64("virtual_alloc_size", key, 0);
-        if (size != 0) {
-            va_size[std::wstring(key.begin(), key.end())] = size;
-        }
-    }
 
     g_cur_len = curPath.wstring().length();
     if (curPath.wstring().back() != L'\\') {
@@ -186,10 +164,5 @@ void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HM
                         reinterpret_cast<LPVOID*>(&fpCreateFileW));
         MH_CreateHookApi(L"kernel32", "CopyFileW", &HookedCopyFileW, 
                         reinterpret_cast<LPVOID*>(&fpCopyFileW));
-    }
-
-    if (!va_size.empty()) {
-        MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_GET_SEKIRO_VA_SIZE_ADDR), &HookedGetSekiroVASize, 
-                        reinterpret_cast<LPVOID*>(&fpGetSekiroVASize));
     }
 }
