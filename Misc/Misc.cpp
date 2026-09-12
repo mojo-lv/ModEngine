@@ -11,7 +11,11 @@ static t_sub_14115ccc0 fp_sub_14115ccc0 = nullptr;
 typedef float*(*t_sub_140731030)(uintptr_t, void*);
 static t_sub_140731030 fp_sub_140731030 = nullptr;
 
+typedef int64_t(*t_sub_1410d3120)(uintptr_t*, uint32_t);
+static t_sub_1410d3120 fp_sub_1410d3120 = nullptr;
+
 static std::unordered_map<std::wstring, size_t> va_size;
+static std::unordered_map<uint32_t, uint16_t> ca_model;
 
 size_t hook_sub_14115ccc0(wchar_t* arg1, size_t arg2)
 {
@@ -49,14 +53,39 @@ float* hook_sub_140731030(uintptr_t arg1, void* arg2)
     return result;
 }
 
+int64_t hook_sub_1410d3120(uintptr_t* arg1, uint32_t arg2)
+{
+    MH_DisableHook(reinterpret_cast<LPVOID>(0x1410d3120));
+
+    for (const auto& [ca, model] : ca_model) {
+        fp_sub_1410d3120(arg1, ca);
+        if (arg1[1] != 0) {
+            *(uint16_t*)(arg1[1] + 0xb8) = model;
+        }
+    }
+    return fp_sub_1410d3120(arg1, arg2);
+}
+
 void ApplyMisc(const INIReader& ini)
 {
-    size_t size;
     for (const auto& key : ini.Keys("virtual_alloc_size")) {
-        size = ini.GetUnsigned64("virtual_alloc_size", key, 0);
+        size_t size = ini.GetUnsigned64("virtual_alloc_size", key, 0);
         if (size != 0) {
             va_size[std::wstring(key.begin(), key.end())] = size;
         }
+    }
+
+    for (const auto& key : ini.Keys("combat_art_model")) {
+        uint32_t ca = std::stoul(key, nullptr);
+        uint16_t model = static_cast<uint16_t>(ini.GetUnsigned("combat_art_model", key, 0));
+        if (model != 0) {
+            ca_model[ca] = model;
+        }
+    }
+
+    if (!ca_model.empty()) {
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x1410d3120), &hook_sub_1410d3120, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_1410d3120));
     }
 
     if (!va_size.empty()) {
