@@ -30,6 +30,9 @@ size_t hook_sub_14115ccc0(wchar_t* arg1, size_t arg2)
 
 float* hook_sub_140731030(uintptr_t arg1, void* arg2)
 {
+    static float lastHeight;
+    static float lastSpeed;
+    static bool lastCrouch = false;
     static uint8_t* crouch = (uint8_t*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
                                 *pWorldChrMan + 0x88) + 0x1ff8) + 0xb8) + 0x320);
 
@@ -41,13 +44,29 @@ float* hook_sub_140731030(uintptr_t arg1, void* arg2)
         actPtr = *(uintptr_t*)(actPtr + 0x10);
         if (actPtr) {
             float height = *(float*)(actPtr + 4) + *(float*)(arg1 + 0xc4) - 1.3f;
-            if ((*crouch == 1) || (result[1] < height)) {
+            if (*crouch == 1) {
+                result[1] = height;
+                lastHeight = height;
+                lastSpeed = 0.0f;
+                lastCrouch = true;
+            } else if (lastCrouch) {
+                float speed = height - lastHeight;
+                if (speed > lastSpeed) lastSpeed = speed;
+                lastHeight += lastSpeed;
+
+                if (result[1] > lastHeight) {
+                    result[1] = lastHeight;
+                } else {
+                    lastCrouch = false;
+                }
+            } else if (result[1] < height) {
                 result[1] = height;
             }
             return result;
         }
     }
 
+    lastCrouch = false;
     crouch = (uint8_t*)(*(uintptr_t*)(*(uintptr_t*)(*(uintptr_t*)(
                 *pWorldChrMan + 0x88) + 0x1ff8) + 0xb8) + 0x320);
     return result;
