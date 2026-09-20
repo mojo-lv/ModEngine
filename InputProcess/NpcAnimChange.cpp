@@ -328,4 +328,6 @@ void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140a58ce0), &hook_sub_140a58ce0, 
                     reinterpret_cast<LPVOID*>(&fp_sub_140a58ce0));
+
+    PatchCreateNpcPos();
 }
