@@ -69,10 +69,20 @@ void HookedNpcList()
 
     if (begin == nullptr || end == nullptr || begin >= end) return;
 
-    for (size_t i = 0; i < end - begin; i++) {
-        if (*(uint8_t*)(*(begin + i) + 0x1a15) & 1) {
+    uintptr_t npcList = *pNPCList;
+    size_t count = end - begin;
+    for (size_t i = 0; i < count; i++) {
+        uintptr_t npc = begin[i];
+        if (*(uint8_t*)(npc + 0x1a15) & 1) {
+            if (*(int32_t*)(npc + 0x1ff0) == -2) {
+                // Update Lv0
+                *(int32_t*)(npc + 0x1ff0) = 0;
+                *(uint8_t*)(npc + 0x1a10) |= 1;
+                *(int32_t*)(npc + 0x110) = 0;
+            }
+
             // Add debug NPCs to the global NPC list
-            fpAddNPC(*pNPCList, begin + i);
+            fpAddNPC(npcList, begin + i);
         }
     }
 }
