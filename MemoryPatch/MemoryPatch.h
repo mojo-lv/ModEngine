@@ -3,6 +3,7 @@
 void ApplyMemoryPatch(const INIReader& ini);
 void PatchSaveFileCheck();
 
+void PatchDebugMenuMisc();
 void PatchDebugMenuHook(uintptr_t hookAddress);
 void PatchNpcListHook(uintptr_t hookAddress);
 void PatchNpcDamageHook(uintptr_t hookAddress);
@@ -13,6 +14,5 @@ void PatchNpcAnimHook(uintptr_t hookAddress);
 void PatchNpcAnimCancelHook(uintptr_t hookAddress);
 void PatchNpcTurnHook(uintptr_t hookAddress);
 void PatchHpDisplayHook(uintptr_t hookAddress);
-void PatchCreateNpcPos();
 
 void PatchOnlineClient(uint64_t lobbyId);

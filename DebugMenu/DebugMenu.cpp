@@ -202,4 +202,6 @@ void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x1419f8620), &hook_sub_1419f8620, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1419f8620));
+
+    PatchDebugMenuMisc();
 }

@@ -51,6 +51,29 @@ void PatchSaveFileCheck()
     PatchMemory(0x140DFCC32, bytes);
 }
 
+void PatchDebugMenuMisc()
+{
+    // mov eax, dword [rcx+0x134]
+    std::vector<uint8_t> bytes = {0x8b, 0x81, 0x34, 0x01, 0x00, 0x00};
+    PatchMemory(0x140bd718b, bytes);
+
+    // eax
+    bytes = {0x44};
+    PatchMemory(0x140bd73e1, bytes);
+
+    /*  je 0x140c10988
+        mov rcx, rax
+        call 0x140a4a210
+        mov rdi, rax
+        jmp short 0x140c108de  */
+    bytes = {0x0f, 0x84, 0xdb, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xc1,
+            0xe8, 0x5b, 0x99, 0xe3, 0xff,
+            0x48, 0x89, 0xc7,
+            0xeb, 0x24};
+    PatchMemory(0x140c108a7, bytes);
+}
+
 void PatchDebugMenuHook(uintptr_t hookAddress)
 {
     std::vector<uint8_t> callBytes = {0xE8};
@@ -177,21 +200,6 @@ void PatchHpDisplayHook(uintptr_t hookAddress)
     // call
     std::vector<uint8_t> bytes = {0xE8};
     PatchMemory(hookAddress, bytes);
-}
-
-void PatchCreateNpcPos()
-{
-    /*  je 0x140c10988
-        mov rcx, rax
-        call 0x140a4a210
-        mov rdi, rax
-        jmp short 0x140c108de  */
-    std::vector<uint8_t> bytes = {0x0f, 0x84, 0xdb, 0x00, 0x00, 0x00,
-                                0x48, 0x89, 0xc1,
-                                0xe8, 0x5b, 0x99, 0xe3, 0xff,
-                                0x48, 0x89, 0xc7,
-                                0xeb, 0x24};
-    PatchMemory(0x140c108a7, bytes);
 }
 
 void PatchOnlineClient(uint64_t lobbyId)
