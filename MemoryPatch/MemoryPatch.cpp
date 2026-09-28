@@ -195,6 +195,23 @@ void PatchNpcTurnHook(uintptr_t hookAddress)
     PatchMemory(hookAddress + 5, bytes);
 }
 
+void PatchNpcMoveHook(uintptr_t hookAddress)
+{
+    /*  mov r9b, byte [rsi+0x2d1]
+        mov r8b, bl
+        mov rcx, rdi
+        call        */
+    std::vector<uint8_t> bytes = {0x44, 0x8a, 0x8e, 0xd1, 0x02, 0x00, 0x00,
+                                0x41, 0x88, 0xd8,
+                                0x48, 0x89, 0xf9,
+                                0xe8};
+    PatchMemory(hookAddress - 0xd, bytes);
+
+    // test al, al
+    bytes = {0x84, 0xc0};
+    PatchMemory(hookAddress + 5, bytes);
+}
+
 void PatchHpDisplayHook(uintptr_t hookAddress)
 {
     // call

@@ -5,6 +5,7 @@
 constexpr uintptr_t HOOK_NPC_ANIM_ADDR = 0x1407e385b;
 constexpr uintptr_t HOOK_NPC_ANIM_CANCEL_ADDR = 0x140b5205e;
 constexpr uintptr_t HOOK_NPC_TURN_ADDR = 0x1407daabc;
+constexpr uintptr_t HOOK_NPC_MOVE_ADDR = 0x1407f0c5d;
 constexpr uintptr_t HOOK_HP_DISPLAY_ADDR = 0x140e34fd2;
 
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
@@ -226,6 +227,17 @@ uintptr_t hook_sub_1407daf30(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uin
     return fp_sub_1407daf30(arg1, arg2, arg3, arg4);
 }
 
+uint8_t HookedNpcMove(uintptr_t arg1, void* arg2, uint8_t arg3, uint8_t arg4)
+{
+    if (!arg4) {
+        if (!arg3) return 1;
+    } else if (*(uintptr_t*)(arg1 + 0x300) == *(uintptr_t*)(*pNPCPlayer + 0x160)) {
+        return 0;
+    }
+
+    return *(uint8_t*)(arg1 + 0x439);
+}
+
 uintptr_t hook_sub_140b45440(uintptr_t arg1)
 {
     uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
@@ -316,6 +328,11 @@ void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
         PatchNpcTurnHook(HOOK_NPC_TURN_ADDR);
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1407daf30), &hook_sub_1407daf30, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1407daf30));
+    }
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_NPC_MOVE_ADDR), &HookedNpcMove, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_NPC_MOVE_ADDR));
+        PatchNpcMoveHook(HOOK_NPC_MOVE_ADDR);
     }
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR), &HookedHpDisplay, NULL) == MH_OK) {

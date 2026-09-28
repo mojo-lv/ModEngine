@@ -13,6 +13,7 @@ void PatchDbgCamFreeHook(uintptr_t hookAddress, bool arg2);
 void PatchNpcAnimHook(uintptr_t hookAddress);
 void PatchNpcAnimCancelHook(uintptr_t hookAddress);
 void PatchNpcTurnHook(uintptr_t hookAddress);
+void PatchNpcMoveHook(uintptr_t hookAddress);
 void PatchHpDisplayHook(uintptr_t hookAddress);
 
 void PatchOnlineClient(uint64_t lobbyId);
