@@ -141,11 +141,7 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
                 return result;
             }
         }
-    } else if (arg2 == animState.lastKeyAnim) {
-        if (curAnim == *pAnim) {
-            *pAnim = NpcAnimState::INVALID_ANIM;
-        }
-    } else {
+    } else if (arg2 != animState.lastKeyAnim) {
         auto it = animMap.find({arg2, curAnim});
         if (it != animMap.end()) {
             animState.inherit = true;
