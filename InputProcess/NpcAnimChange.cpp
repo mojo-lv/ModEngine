@@ -117,7 +117,7 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
     uintptr_t animPtr = *(uintptr_t*)(base_ptr + 0x10);
     for (int i = *(uint32_t*)(animPtr + 0xf0); i >= 0; --i) {
         curAnim = *(uint32_t*)(animPtr + i * 0x14 + 0x20) % 1000000;
-        if ((curAnim < 9000) || (curAnim > 9999)) break;
+        if (animState.hold || (curAnim < 9000) || (curAnim > 9999)) break;
     }
 
     if (modAnimSet.count(curAnim)) {
