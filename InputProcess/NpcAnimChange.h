@@ -5,6 +5,7 @@ struct NpcAnimState {
     uintptr_t npc = 0;
     uint32_t lastKeyAnim = INVALID_ANIM;
     bool inherit = false;
+    bool hold = false;
 };
 
 struct NpcAnimConfig {
