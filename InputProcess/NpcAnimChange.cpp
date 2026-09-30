@@ -40,13 +40,15 @@ static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t 
     if (!path.empty()) config = INIReader(path.string());
     if (config.ParseError()) return;
 
-    std::string section = "";
+    std::string section = std::to_string(characterId / 10000 * 10000);
+    if (!config.HasSection(section)) section.clear();
+
+    std::string idStr = std::to_string(characterId);
     if (modAnim == 0) {
         modAnimSet.clear();
         animMap.clear();
         directAnimMap.clear();
 
-        std::string idStr = std::to_string(characterId);
         size_t idLen = idStr.size();
         size_t secLen;
         for (const auto& configSection : config.Sections()) {
@@ -60,7 +62,7 @@ static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t 
             }
         }
     } else {
-        section = std::to_string(characterId) + "_" + std::to_string(modAnim);
+        section = idStr + "_" + std::to_string(modAnim);
     }
 
     size_t pos, start, valSize;
