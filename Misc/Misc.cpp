@@ -65,6 +65,7 @@ float* hook_sub_140731030(uintptr_t arg1, void* arg2)
     float* result = fp_sub_140731030(arg1, arg2);
     if (*(uintptr_t*)(*pNPCPlayer + 0x160)) return result;
 
+    // state 2: Crouch, state 41: Deathblow
     uint32_t state = *(uint32_t*)(*pPlayerState + 0x3ec);
     if (!lastCrouch && (state != 2) && (state != 41)) return result;
 
