@@ -130,7 +130,9 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
 
     if (arg2 == NpcAnimState::INVALID_ANIM) {
         if (*pAnim != NpcAnimState::INVALID_ANIM) {
-            if (!animState.inherit || curAnim == *pAnim) {
+            if (animState.hold || !animState.inherit || curAnim == *pAnim) {
+                animState.hold = false;
+                animState.inherit = false;
                 *pAnim = NpcAnimState::INVALID_ANIM;
             }
         } else if (animConfig.reload && (animConfig.reloadDelay++ > animConfig.DELAY_MAX)) {
