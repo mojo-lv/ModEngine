@@ -12,8 +12,7 @@ static t_sub_14115ccc0 fp_sub_14115ccc0 = nullptr;
 typedef int64_t(*t_sub_1410d3120)(uintptr_t*, uint32_t);
 static t_sub_1410d3120 fp_sub_1410d3120 = nullptr;
 
-typedef int64_t(*t_sub_1409e9d10)(uintptr_t, uint32_t,
-        void*, void*, char, char, void*, int32_t, char, int32_t, char, char);
+typedef int64_t(*t_sub_1409e9d10)(uintptr_t, uint32_t, void*, void*);
 static t_sub_1409e9d10 fp_sub_1409e9d10 = nullptr;
 
 typedef float*(*t_sub_140731030)(uintptr_t, void*);
@@ -47,9 +46,7 @@ int64_t hook_sub_1410d3120(uintptr_t* arg1, uint32_t arg2)
     return fp_sub_1410d3120(arg1, arg2);
 }
 
-int64_t hook_sub_1409e9d10(uintptr_t arg1, uint32_t arg2, 
-            void* arg3, void* arg4, char arg5, char arg6, void* arg7,
-            int32_t arg8, char arg9, int32_t arg10, char arg11, char arg12)
+int64_t hook_sub_1409e9d10(uintptr_t arg1, uint32_t arg2, void* arg3, void* arg4)
 {
     if (*(uintptr_t*)(*pNPCPlayer + 0x160) && *(uintptr_t*)(*pWorldChrMan + 0x88) != arg1) {
         auto it = npc_se.find(arg2);
@@ -57,8 +54,7 @@ int64_t hook_sub_1409e9d10(uintptr_t arg1, uint32_t arg2,
             arg2 = it->second;
         }
     }
-    return fp_sub_1409e9d10(arg1, arg2, arg3, arg4, arg5, arg6,
-                            arg7, arg8, arg9, arg10, arg11, arg12);
+    return fp_sub_1409e9d10(arg1, arg2, arg3, arg4);
 }
 
 float* hook_sub_140731030(uintptr_t arg1, void* arg2)
