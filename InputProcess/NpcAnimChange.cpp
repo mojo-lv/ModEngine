@@ -188,17 +188,13 @@ static bool NpcNoGoodsConsume(uintptr_t arg1)
 uintptr_t HookedNpcAnimCancel(uintptr_t arg1, uintptr_t arg2, uint8_t arg3)
 {
     uintptr_t npc = *(uintptr_t*)(arg1 + 0x10);
-    uintptr_t result = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x80);
 
     if (arg3 == 0x17) {
-        if (result != 0 && NpcNoGoodsConsume(npc)) {
-            *(uint32_t*)(arg2 + 0x1e8) |= 2;
-            return result;
-        }
+        if (NpcNoGoodsConsume(npc)) *(uint8_t*)(arg2 + 0x1e8) |= 4;
         return 0;
     }
 
-    return result;
+    return *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x80);
 }
 
 static bool NpcNoResourceItemConsume(uintptr_t arg1)
@@ -253,8 +249,8 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
         }
 
         uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
-        if (*(uint32_t*)(base + 0x148) == 0) {
-            // Stamina is 0
+        if (!(*(uint8_t*)(base + 0x228) & 4) && (*(uint32_t*)(base + 0x148) == 0)) {
+            // No Dead is off, Stamina is 0
             uint32_t& hp = *(uint32_t*)(base + 0x130);
             if (hp == 1) {
                 int32_t& redDot = *(int32_t*)(base + 0x25c);
