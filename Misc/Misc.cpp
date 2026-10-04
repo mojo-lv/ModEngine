@@ -152,7 +152,7 @@ void ApplyMisc(const INIReader& ini)
                     se_sfx[vfx] = {std::stoul(valStr), 0};
                 } else {
                     se_sfx[vfx] = {std::stoul(valStr.substr(0, pos)), 
-                            std::stoul(valStr.substr(pos + 1))};
+                        static_cast<uint16_t>(std::stoul(valStr.substr(pos + 1)))};
                 }
             }
         }
