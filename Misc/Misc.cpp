@@ -6,6 +6,9 @@ static uintptr_t* const pActPanMan = reinterpret_cast<uintptr_t*>(0x143d78048);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
 static uintptr_t* const pPlayerState = reinterpret_cast<uintptr_t*>(0x143d59938);
 
+typedef int64_t(*t_sub_1410c1990)(uintptr_t*, uint32_t, uint32_t);
+static t_sub_1410c1990 fp_sub_1410c1990 = reinterpret_cast<t_sub_1410c1990>(0x1410c1990);
+
 typedef size_t(*t_sub_14115ccc0)(wchar_t*, size_t);
 static t_sub_14115ccc0 fp_sub_14115ccc0 = nullptr;
 
@@ -21,6 +24,7 @@ static t_sub_140731030 fp_sub_140731030 = nullptr;
 static std::unordered_map<std::wstring, size_t> va_size;
 static std::unordered_map<uint32_t, uint16_t> ca_model;
 static std::unordered_map<uint32_t, uint32_t> npc_se;
+static std::unordered_map<uint32_t, std::pair<uint32_t, uint16_t>> se_sfx;
 
 size_t hook_sub_14115ccc0(wchar_t* arg1, size_t arg2)
 {
@@ -36,6 +40,20 @@ size_t hook_sub_14115ccc0(wchar_t* arg1, size_t arg2)
 int64_t hook_sub_1410d3120(uintptr_t* arg1, uint32_t arg2)
 {
     MH_DisableHook(reinterpret_cast<LPVOID>(0x1410d3120));
+
+    for (const auto& [vfx, sfx] : se_sfx) {
+        fp_sub_1410c1990(arg1, 0x10, sfx.first);
+        if (arg1[2] != 0) {
+            uint32_t newSfx = *(uint32_t*)(arg1[2]);
+            fp_sub_1410c1990(arg1, 0x10, vfx);
+            if (arg1[2] != 0) {
+                *(uint32_t*)(arg1[2]) = newSfx;
+                if (sfx.second != 0) {
+                    *(uint16_t*)(arg1[2] + 0x24) = sfx.second;
+                }
+            }
+        }
+    }
 
     for (const auto& [ca, model] : ca_model) {
         fp_sub_1410d3120(arg1, ca);
@@ -112,18 +130,31 @@ void ApplyMisc(const INIReader& ini)
     }
 
     for (const auto& key : ini.Keys("combat_art_model")) {
-        uint32_t ca = std::stoul(key, nullptr);
         uint16_t model = static_cast<uint16_t>(ini.GetUnsigned("combat_art_model", key, 0));
         if (model != 0) {
-            ca_model[ca] = model;
+            ca_model[std::stoul(key, nullptr)] = model;
         }
     }
 
     for (const auto& key : ini.Keys("npc_special_effect")) {
-        uint32_t old_se = std::stoul(key, nullptr);
-        uint32_t new_se = ini.GetUnsigned("npc_special_effect", key, 0);
-        if (new_se != 0) {
-            npc_se[old_se] = new_se;
+        size_t pos = key.find('_');
+        if (pos == std::string::npos) {
+            uint32_t new_se = ini.GetUnsigned("npc_special_effect", key, 0);
+            if (new_se != 0) {
+                npc_se[std::stoul(key, nullptr)] = new_se;
+            }
+        } else {
+            std::string valStr = ini.GetString("npc_special_effect", key, "");
+            if (!valStr.empty()) {
+                uint32_t vfx = std::stoul(key.substr(pos + 1));
+                pos = valStr.find('_');
+                if (pos == std::string::npos) {
+                    se_sfx[vfx] = {std::stoul(valStr), 0};
+                } else {
+                    se_sfx[vfx] = {std::stoul(valStr.substr(0, pos)), 
+                            std::stoul(valStr.substr(pos + 1))};
+                }
+            }
         }
     }
 
@@ -132,7 +163,7 @@ void ApplyMisc(const INIReader& ini)
                         reinterpret_cast<LPVOID*>(&fp_sub_14115ccc0));
     }
 
-    if (!ca_model.empty()) {
+    if (!ca_model.empty() || !se_sfx.empty()) {
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1410d3120), &hook_sub_1410d3120, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1410d3120));
     }
