@@ -21,6 +21,12 @@ static t_sub_140b45440 fp_sub_140b45440 = nullptr;
 typedef void(*t_sub_140a58ce0)(uintptr_t, uintptr_t);
 static t_sub_140a58ce0 fp_sub_140a58ce0 = nullptr;
 
+typedef uintptr_t(*t_sub_1406c1a10)(int32_t*);
+static t_sub_1406c1a10 fp_sub_1406c1a10 = nullptr;
+
+typedef uintptr_t(*t_sub_140751180)(uintptr_t);
+static t_sub_140751180 fp_sub_140751180 = reinterpret_cast<t_sub_140751180>(0x140751180);
+
 static std::unordered_set<uint32_t> modAnimSet;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
 static std::unordered_map<uint32_t, uint32_t> directAnimMap;
@@ -31,6 +37,7 @@ static bool enablePlaySpeed = false;
 static bool skipDeathblow = false;
 static bool repeatButton = false;
 static bool logAnim = false;
+static int32_t entityId = 0;
 
 static NpcAnimState animState;
 static NpcAnimConfig animConfig;
@@ -245,6 +252,17 @@ uint8_t HookedNpcMove(uintptr_t arg1, void* arg2, uint8_t arg3, uint8_t arg4)
     return *(uint8_t*)(arg1 + 0x439);
 }
 
+uint32_t HookedHpDisplay(uintptr_t arg1)
+{
+    uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
+    if (npcPlayer) {
+        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npcPlayer + 0x1ff8) + 0x18);
+        return (*(uint32_t*)(base + 0x130)) * (*(uint32_t*)(arg1 + 0x134))
+                    / (*(uint32_t*)(base + 0x134));
+    }
+    return *(uint32_t*)(arg1 + 0x130);
+}
+
 uintptr_t hook_sub_140b45440(uintptr_t arg1)
 {
     uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
@@ -294,15 +312,23 @@ void hook_sub_140a58ce0(uintptr_t arg1, uintptr_t arg2)
     }
 }
 
-uint32_t HookedHpDisplay(uintptr_t arg1)
+uintptr_t hook_sub_1406c1a10(int32_t* arg1)
 {
     uintptr_t npcPlayer = *(uintptr_t*)(*pNPCPlayer + 0x160);
     if (npcPlayer) {
-        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npcPlayer + 0x1ff8) + 0x18);
-        return (*(uint32_t*)(base + 0x130)) * (*(uint32_t*)(arg1 + 0x134))
-                    / (*(uint32_t*)(base + 0x134));
+        if (entityId < 0) {
+            if (*(int32_t*)(npcPlayer + 0x1a24) == *arg1) {
+                return 0;
+            }
+        } else if (entityId == *arg1) {
+            if (*(int32_t*)(npcPlayer + 0x1a24) == -1) {
+                uintptr_t& ptr = *(uintptr_t*)(npcPlayer + 0x2058);
+                if (ptr == 0) ptr = fp_sub_140751180(npcPlayer);
+                if (ptr != 0) return npcPlayer;
+            }
+        }
     }
-    return *(uint32_t*)(arg1 + 0x130);
+    return fp_sub_1406c1a10(arg1);
 }
 
 void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
@@ -312,6 +338,7 @@ void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
     logAnim = ini.GetBoolean("logs", "npc_anim_change", false);
     skipDeathblow = ini.GetBoolean("npc_anim_change", "skip_deathblow", false);
     repeatButton = ini.GetBoolean("npc_anim_change", "repeat_button", false);
+    entityId = ini.GetInteger("npc_anim_change", "entity_id", 0);
     playSpeed = ini.GetReal("npc_anim_change", "play_speed", 0);
 
     if (playSpeed > 0) {
@@ -349,6 +376,11 @@ void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR), &HookedHpDisplay, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR));
         PatchHpDisplayHook(HOOK_HP_DISPLAY_ADDR);
+    }
+
+    if (entityId != 0) {
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x1406c1a10), &hook_sub_1406c1a10, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_1406c1a10));
     }
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x140b45440), &hook_sub_140b45440, 
