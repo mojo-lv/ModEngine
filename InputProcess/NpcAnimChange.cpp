@@ -28,6 +28,8 @@ static std::unordered_map<uint32_t, uint32_t> directAnimMap;
 static float turnSpeed = 200;
 static float playSpeed = 0;
 static bool enablePlaySpeed = false;
+static bool skipDeathblow = false;
+static bool repeatButton = false;
 static bool logAnim = false;
 
 static NpcAnimState animState;
@@ -167,7 +169,11 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
                 << ", newAnim: " << *pAnim << std::endl;
         }
     } else if (curAnim == *pAnim) {
-        animState.hold = true;
+        if (!animState.hold) {
+            animState.hold = true;
+        } else if (!repeatButton) {
+            *pAnim = NpcAnimState::INVALID_ANIM;
+        }
     } else if (animState.hold) {
         animState.hold = false;
         *pAnim = NpcAnimState::INVALID_ANIM;
@@ -248,15 +254,17 @@ uintptr_t hook_sub_140b45440(uintptr_t arg1)
             *(float*)(arg1 + 0xd00) = playSpeed;
         }
 
-        uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
-        if (!(*(uint8_t*)(base + 0x228) & 4) && (*(uint32_t*)(base + 0x148) == 0)) {
-            // No Dead is off, Stamina is 0
-            uint32_t& hp = *(uint32_t*)(base + 0x130);
-            if (hp == 1) {
-                int32_t& redDot = *(int32_t*)(base + 0x25c);
-                if (redDot > 0) {
-                    redDot--;
-                    hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
+        if (skipDeathblow) {
+            uintptr_t base = *(uintptr_t*)(*(uintptr_t*)(npc + 0x1ff8) + 0x18);
+            if (!(*(uint8_t*)(base + 0x228) & 4) && (*(uint32_t*)(base + 0x148) == 0)) {
+                // No Dead is off, Stamina is 0
+                uint32_t& hp = *(uint32_t*)(base + 0x130);
+                if (hp == 1) {
+                    int32_t& redDot = *(int32_t*)(base + 0x25c);
+                    if (redDot > 0) {
+                        redDot--;
+                        hp = (redDot > 0) ? *(uint32_t*)(base + 0x134) : 0;
+                    }
                 }
             }
         }
@@ -302,6 +310,8 @@ void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
     std::string configPath = ini.GetString("npc_anim_change", "npc_anim_config", "");
     animConfig.reload = ini.GetBoolean("npc_anim_change", "npc_anim_reload", false);
     logAnim = ini.GetBoolean("logs", "npc_anim_change", false);
+    skipDeathblow = ini.GetBoolean("npc_anim_change", "skip_deathblow", false);
+    repeatButton = ini.GetBoolean("npc_anim_change", "repeat_button", false);
     playSpeed = ini.GetReal("npc_anim_change", "play_speed", 0);
 
     if (playSpeed > 0) {
