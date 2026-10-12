@@ -29,7 +29,7 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
 {
     // Wait for dxgi.dll to be loaded
     while (!GetModuleHandleW(L"dxgi.dll"))
-        Sleep(1000);
+        Sleep(3000);
 
     // Create a dummy device and swapchain to get the vtable address
     WNDCLASSEXW wc = {

@@ -27,7 +27,7 @@ static INIReader g_INI("mod_engine.ini");
 
 static void ApplyPostUnpackHooks()
 {
-    if (g_INI.HasSection("debug_menu")) {
+    if (g_INI.GetBoolean("debug_menu", "enable", false)) {
         EnableDebugMenu(g_INI, g_CurPath);
         CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
     }
