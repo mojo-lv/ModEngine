@@ -80,19 +80,30 @@ void PatchDebugMenuMisc()
 
 void PatchDebugMenuHook(uintptr_t hookAddress)
 {
-    std::vector<uint8_t> callBytes = {0xE8};
-    PatchMemory(hookAddress, callBytes);
+    std::vector<uint8_t> bytes = {0xE8};
+    PatchMemory(hookAddress, bytes);
 
-    std::vector<uint8_t> retBytes = {0xC3};
-    PatchMemory(0x142650400, retBytes);
-    PatchMemory(0x14261E660, retBytes);
-    PatchMemory(0x142619690, retBytes);
+    bytes = {0xC3};
+    PatchMemory(0x142650400, bytes);
+    PatchMemory(0x14261E660, bytes);
+    PatchMemory(0x142619690, bytes);
 
-    std::vector<uint8_t> movAl01Bytes = {0xB0, 0x01};
-    PatchMemory(0x1409791C0, movAl01Bytes);
-    PatchMemory(0x1409791D0, movAl01Bytes);
-    PatchMemory(0x1409791E0, movAl01Bytes);
-    PatchMemory(0x141187590, movAl01Bytes);
+    bytes = {0xB0, 0x01};
+    PatchMemory(0x141187590, bytes);
+    PatchMemory(0x1409791C0, bytes);
+    PatchMemory(0x1409791D0, bytes);
+
+    /*  mov rax, qword [rel data_143f42800]
+        test rax, rax
+        je short 0x1409791ef
+        mov al, byte [rax+0x30]
+        ret  */
+    bytes = {0x48, 0x8B, 0x05, 0x19, 0x96, 0x5C, 0x03,
+            0x48, 0x85, 0xC0,
+            0x74, 0x03,
+            0x8A, 0x40, 0x30,
+            0xC3};
+    PatchMemory(0x1409791E0, bytes);
 };
 
 void PatchNpcListHook(uintptr_t hookAddress)
