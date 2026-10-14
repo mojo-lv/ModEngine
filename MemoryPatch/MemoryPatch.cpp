@@ -89,21 +89,10 @@ void PatchDebugMenuHook(uintptr_t hookAddress)
     PatchMemory(0x142619690, bytes);
 
     bytes = {0xB0, 0x01};
-    PatchMemory(0x141187590, bytes);
     PatchMemory(0x1409791C0, bytes);
     PatchMemory(0x1409791D0, bytes);
-
-    /*  mov rax, qword [rel data_143f42800]
-        test rax, rax
-        je short 0x1409791ef
-        mov al, byte [rax+0x30]
-        ret  */
-    bytes = {0x48, 0x8B, 0x05, 0x19, 0x96, 0x5C, 0x03,
-            0x48, 0x85, 0xC0,
-            0x74, 0x03,
-            0x8A, 0x40, 0x30,
-            0xC3};
     PatchMemory(0x1409791E0, bytes);
+    PatchMemory(0x141187590, bytes);
 };
 
 void PatchNpcListHook(uintptr_t hookAddress)
