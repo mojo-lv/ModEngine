@@ -76,6 +76,10 @@ void PatchDebugMenuMisc()
     // 99999999
     bytes = {0xff, 0xe0, 0xf5, 0x05};
     PatchMemory(0x1409fdffc, bytes);
+
+    bytes = {0x33};
+    PatchMemory(0x142bcefaa, bytes);
+    PatchMemory(0x142bcefda, bytes);
 }
 
 void PatchDebugMenuHook(uintptr_t hookAddress)
