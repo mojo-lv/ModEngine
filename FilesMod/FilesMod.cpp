@@ -56,17 +56,6 @@ static bool ScanModsDir(const fs::path& modsDir)
     return true;
 }
 
-static void ScanDllsDir(const fs::path& dllsDir, std::vector<HMODULE>& loadedDLLs)
-{
-    if (fs::exists(dllsDir) && fs::is_directory(dllsDir)) {
-        for (const auto& p : fs::directory_iterator(dllsDir)) {
-            if (!p.is_directory() && (p.path().filename().wstring().front() != L'_')) {
-                loadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
-            }
-        }
-    }
-}
-
 SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, void* p5, void* p6)
 {
     fpGetSekiroPath(p1, p2, p3, p4, p5, p6);
@@ -131,9 +120,8 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
 
-void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HMODULE>& loadedDLLs)
+void ApplyFilesMod(const INIReader& ini, const fs::path& curPath)
 {
-    std::string dlls = ini.GetString("files", "dlls", "");
     std::string mods = ini.GetString("files", "mods", "");
     std::string save = ini.GetString("files", "save", "");
     g_skip_cutscenes = ini.GetBoolean("files", "skip_cutscenes", false);
@@ -141,10 +129,6 @@ void ApplyFilesMod(const INIReader& ini, const fs::path& curPath, std::vector<HM
     g_cur_len = curPath.wstring().length();
     if (curPath.wstring().back() != L'\\') {
         g_cur_len++;
-    }
-
-    if (!dlls.empty()) {
-        ScanDllsDir(curPath / dlls, loadedDLLs);
     }
 
     if (!mods.empty() && ScanModsDir(curPath / mods)) {

@@ -31,7 +31,7 @@ static void ApplyPostUnpackHooks()
         EnableDebugMenu(g_INI, g_CurPath);
         CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
     }
-    if (g_INI.HasSection("files")) ApplyFilesMod(g_INI, g_CurPath, g_LoadedDLLs);
+    if (g_INI.HasSection("files")) ApplyFilesMod(g_INI, g_CurPath);
     if (g_INI.HasSection("key_remap")) EnableKeyRemap(g_INI);
     if (g_INI.HasSection("npc_anim_change")) EnableNpcAnimChange(g_INI, g_CurPath);
     if (g_INI.HasSection("player_skill_change")) EnablePlayerSkillChange(g_INI, g_CurPath);
@@ -50,7 +50,7 @@ int64_t SteamAPI_Init()
     return 0;
 }
 
-static void GetOriginalFunction()
+static void LoadDlls()
 {
     wchar_t dllPath[MAX_PATH];
     GetSystemDirectoryW(dllPath, MAX_PATH);
@@ -60,11 +60,23 @@ static void GetOriginalFunction()
         g_LoadedDLLs.push_back(hMod);
         fpDInput8Create = (t_DirectInput8Create)GetProcAddress(hMod, "DirectInput8Create");
     }
+
+    std::string dlls = g_INI.GetString("files", "dlls", "");
+    if (!dlls.empty()) {
+        const fs::path dllsDir(g_CurPath / dlls);
+        if (fs::exists(dllsDir) && fs::is_directory(dllsDir)) {
+            for (const auto& p : fs::directory_iterator(dllsDir)) {
+                if (!p.is_directory() && (p.path().filename().wstring().front() != L'_')) {
+                    g_LoadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
+                }
+            }
+        }
+    }
 }
 
 static void OnAttach()
 {
-    GetOriginalFunction();
+    LoadDlls();
 
     LPVOID pTarget = nullptr;
     HMODULE hMod = GetModuleHandleW(L"steam_api64.dll");
