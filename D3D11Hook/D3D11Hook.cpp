@@ -8,6 +8,21 @@ static Present_t oPresent = nullptr;
 typedef HRESULT(STDMETHODCALLTYPE* ResizeBuffers_t)(IDXGISwapChain*, UINT, UINT, UINT, DXGI_FORMAT, UINT);
 static ResizeBuffers_t oResizeBuffers = nullptr;
 
+static void** g_pSwapChainVTable = nullptr;
+
+constexpr size_t SWAP_CHAIN_VTABLE_PRESENT = 8;
+constexpr size_t SWAP_CHAIN_VTABLE_RESIZE_BUFFERS = 13;
+
+static void WriteVTableFunction(void** pSlot, void* pFunction, void** pOriginalFunction)
+{
+    DWORD oldProtect;
+    if (VirtualProtect(pSlot, sizeof(void*), PAGE_READWRITE, &oldProtect)) {
+        if (pOriginalFunction) *pOriginalFunction = *pSlot;
+        *pSlot = pFunction;
+        VirtualProtect(pSlot, sizeof(void*), oldProtect, &oldProtect);
+    }
+}
+
 HRESULT APIENTRY HookedD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
     RenderImGui(pSwapChain);
@@ -60,18 +75,16 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
         D3D11_SDK_VERSION, &sd, &swapChain, &device, nullptr, &context);
 
     if (SUCCEEDED(hr)) {
-        // Get the address of the Present function from the vtable
-        void** pVTable = *reinterpret_cast<void***>(swapChain);
-        void* pPresentAddr = pVTable[8];
-        void* pResizeBuffersAddr = pVTable[13];
+        // Replace the shared IDXGISwapChain virtual function pointers directly.
+        g_pSwapChainVTable = *reinterpret_cast<void***>(swapChain);
 
-        if (MH_CreateHook(pPresentAddr, &HookedD3D11Present, reinterpret_cast<void**>(&oPresent)) == MH_OK) {
-            MH_EnableHook(pPresentAddr);
-        }
+        WriteVTableFunction(&g_pSwapChainVTable[SWAP_CHAIN_VTABLE_PRESENT],
+                reinterpret_cast<void*>(&HookedD3D11Present),
+                reinterpret_cast<void**>(&oPresent));
 
-        if (MH_CreateHook(pResizeBuffersAddr, &HookedResizeBuffers, reinterpret_cast<void**>(&oResizeBuffers)) == MH_OK) {
-            MH_EnableHook(pResizeBuffersAddr);
-        }
+        WriteVTableFunction(&g_pSwapChainVTable[SWAP_CHAIN_VTABLE_RESIZE_BUFFERS],
+                reinterpret_cast<void*>(&HookedResizeBuffers),
+                reinterpret_cast<void**>(&oResizeBuffers));
 
         // Cleanup the dummy resources
         swapChain->Release();
@@ -82,4 +95,19 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
     return 0;
+}
+
+void RestoreD3D11Hook()
+{
+    if (!g_pSwapChainVTable) return;
+
+    if (oPresent) {
+        WriteVTableFunction(&g_pSwapChainVTable[SWAP_CHAIN_VTABLE_PRESENT],
+                reinterpret_cast<void*>(oPresent), nullptr);
+    }
+
+    if (oResizeBuffers) {
+        WriteVTableFunction(&g_pSwapChainVTable[SWAP_CHAIN_VTABLE_RESIZE_BUFFERS],
+                reinterpret_cast<void*>(oResizeBuffers), nullptr);
+    }
 }

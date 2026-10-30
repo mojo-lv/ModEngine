@@ -81,13 +81,14 @@ static void OnAttach()
 
 static void OnDetach()
 {
-    for (auto dll : g_LoadedDLLs) {
-        if (dll) FreeLibrary(dll);
-    }
-
+    RestoreD3D11Hook();
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
     ShutdownImGui();
+
+    for (HMODULE dll : g_LoadedDLLs) {
+        if (dll) FreeLibrary(dll);
+    }
 }
 
 static int LoadConfig() {
