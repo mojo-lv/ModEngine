@@ -59,13 +59,17 @@ static void LoadDlls()
     }
 
     std::string dlls = g_INI.GetString("files", "dlls", "");
-    if (!dlls.empty()) {
-        const fs::path dllsDir(g_CurPath / dlls);
-        if (fs::exists(dllsDir) && fs::is_directory(dllsDir)) {
-            for (const auto& p : fs::directory_iterator(dllsDir)) {
-                if (!p.is_directory() && (p.path().filename().wstring().front() != L'_')) {
-                    g_LoadedDLLs.push_back(LoadLibraryW(p.path().wstring().c_str()));
-                }
+    if (dlls.empty()) return;
+
+    fs::path dllsDir(g_CurPath / dlls);
+    if (!fs::exists(dllsDir) || !fs::is_directory(dllsDir)) return;
+
+    for (const auto& p : fs::directory_iterator(dllsDir)) {
+        if (!p.is_directory()) {
+            wchar_t f = p.path().filename().wstring().front();
+            if ((f != L'_') && (f != L'.')) {
+                hMod = LoadLibraryW(p.path().wstring().c_str());
+                if (hMod) g_LoadedDLLs.push_back(hMod);
             }
         }
     }
@@ -74,7 +78,7 @@ static void LoadDlls()
 static void OnAttach()
 {
     if (g_INI.GetBoolean("debug_menu", "enable", false)) {
-        CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
+        CreateThread(nullptr, 0, ApplyD3D11Hook, nullptr, 0, nullptr);
     }
 
     LoadDlls();
@@ -95,9 +99,10 @@ static void OnAttach()
 static void OnDetach()
 {
     RestoreD3D11Hook();
+    ShutdownImGui();
+
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
-    ShutdownImGui();
 
     for (HMODULE dll : g_LoadedDLLs) {
         if (dll) FreeLibrary(dll);
