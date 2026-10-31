@@ -2,15 +2,15 @@
 
 struct FontConfig {
     std::string path;
-    float spacing;
+    float spacing = 0.0f;
     float size = 20.0f;
     UINT color = 0xFFFFFFFF;
 };
 
 struct MenuEntry {
+    std::string text;
     float fX;
     float fY;
-    std::string text;
 };
 
 struct DbgCamState {
