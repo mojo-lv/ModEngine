@@ -27,10 +27,7 @@ static INIReader g_INI("mod_engine.ini");
 
 static void ApplyPostUnpackHooks()
 {
-    if (g_INI.GetBoolean("debug_menu", "enable", false)) {
-        EnableDebugMenu(g_INI, g_CurPath);
-        CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
-    }
+    if (g_INI.GetBoolean("debug_menu", "enable", false)) EnableDebugMenu(g_INI, g_CurPath);
     if (g_INI.HasSection("files")) ApplyFilesMod(g_INI, g_CurPath);
     if (g_INI.HasSection("key_remap")) EnableKeyRemap(g_INI);
     if (g_INI.HasSection("npc_anim_change")) EnableNpcAnimChange(g_INI, g_CurPath);
@@ -76,6 +73,10 @@ static void LoadDlls()
 
 static void OnAttach()
 {
+    if (g_INI.GetBoolean("debug_menu", "enable", false)) {
+        CreateThread(NULL, 0, ApplyD3D11Hook, NULL, NULL, NULL);
+    }
+
     LoadDlls();
 
     LPVOID pTarget = nullptr;
