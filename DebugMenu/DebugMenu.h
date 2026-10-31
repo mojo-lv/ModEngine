@@ -2,7 +2,8 @@
 
 struct FontConfig {
     std::string path;
-    float size = 18.0f;
+    float spacing;
+    float size = 20.0f;
     UINT color = 0xFFFFFFFF;
 };
 

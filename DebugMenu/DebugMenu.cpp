@@ -159,6 +159,7 @@ bool hook_sub_1419f8620(uintptr_t arg1, void* arg2, int32_t arg3)
 void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
 {
     g_log_debug_menu = ini.GetBoolean("logs", "debug_menu", false);
+    g_fontConfig.spacing = ini.GetReal("debug_menu", "spacing", 0);
     std::string fontPathStr = ini.GetString("debug_menu", "font_path", "");
     float fontSize = ini.GetReal("debug_menu", "font_size", 0);
     ULONG color = ini.GetUnsigned("debug_menu", "color", 0);

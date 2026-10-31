@@ -125,7 +125,9 @@ static void InitImGui(IDXGISwapChain* pSwapChain)
         gCtx.pMenuFont = nullptr;
     }
     if (!g_fontConfig.path.empty()) {
-        gCtx.pMenuFont = io.Fonts->AddFontFromFileTTF(g_fontConfig.path.c_str(), g_fontConfig.size, nullptr, RANGES);
+        ImFontConfig cfg;
+        cfg.GlyphExtraAdvanceX = g_fontConfig.spacing;
+        gCtx.pMenuFont = io.Fonts->AddFontFromFileTTF(g_fontConfig.path.c_str(), g_fontConfig.size, &cfg, RANGES);
     }
     if (!gCtx.pMenuFont) {
         gCtx.pMenuFont = io.Fonts->AddFontDefault();
