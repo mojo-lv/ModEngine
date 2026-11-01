@@ -13,7 +13,9 @@ static void** g_pSwapChainVTable = nullptr;
 constexpr size_t SWAP_CHAIN_VTABLE_PRESENT = 8;
 constexpr size_t SWAP_CHAIN_VTABLE_RESIZE_BUFFERS = 13;
 
-LRESULT CALLBACK DXGIMsgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) { return DefWindowProc(hwnd, uMsg, wParam, lParam); }
+LRESULT CALLBACK DXGIMsgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
 
 static void WriteVTableFunction(void** pSlot, void* pFunction, void** pOriginalFunction)
 {
@@ -44,61 +46,56 @@ HRESULT STDMETHODCALLTYPE HookedResizeBuffers(IDXGISwapChain* pSwapChain, UINT B
 
 DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
 {
-    HMODULE hDXGI = 0;
-	while (!hDXGI) {
-		hDXGI = GetModuleHandleA("dxgi.dll");
-		Sleep(4000);
-	};
+    while (!GetModuleHandleA("dxgi.dll")) {
+        Sleep(4000);
+    }
 
-	IDXGISwapChain* pSwapChain;
-	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DXGIMsgProc, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "DX", NULL };
-	RegisterClassExA(&wc);
-	HWND window = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
+    WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DXGIMsgProc, 0L, 0L,
+        GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "DX", NULL };
+    RegisterClassExA(&wc);
+    HWND window = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW,
+        100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
-	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
-	D3D_FEATURE_LEVEL obtainedLevel;
-	ID3D11Device* d3dDevice = nullptr;
-	ID3D11DeviceContext* d3dContext = nullptr;
+    DXGI_SWAP_CHAIN_DESC scd{};
+    scd.BufferCount = 1;
+    scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    scd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+    scd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+    scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
-	DXGI_SWAP_CHAIN_DESC scd;
-	ZeroMemory(&scd, sizeof(scd));
-	scd.BufferCount = 1;
-	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	scd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	scd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    scd.OutputWindow = window;
+    scd.SampleDesc.Count = 1;
+    scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    scd.Windowed = ((GetWindowLongPtr(window, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
 
-	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-	scd.OutputWindow = window;
-	scd.SampleDesc.Count = 1;
-	scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-	scd.Windowed = ((GetWindowLongPtr(window, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
+    scd.BufferDesc.Width = 1;
+    scd.BufferDesc.Height = 1;
+    scd.BufferDesc.RefreshRate.Numerator = 0;
+    scd.BufferDesc.RefreshRate.Denominator = 1;
 
-	scd.BufferDesc.Width = 1;
-	scd.BufferDesc.Height = 1;
-	scd.BufferDesc.RefreshRate.Numerator = 0;
-	scd.BufferDesc.RefreshRate.Denominator = 1;
-
-	UINT createFlags = 0;
-	IDXGISwapChain* d3dSwapChain = 0;
+    D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
+    IDXGISwapChain* d3dSwapChain = nullptr;
+    ID3D11Device* d3dDevice = nullptr;
+    ID3D11DeviceContext* d3dContext = nullptr;
 
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
-		nullptr,
-		D3D_DRIVER_TYPE_HARDWARE,
-		nullptr,
-		createFlags,
-		requestedLevels,
-		sizeof(requestedLevels) / sizeof(D3D_FEATURE_LEVEL),
-		D3D11_SDK_VERSION,
-		&scd,
-		&pSwapChain,
-		&d3dDevice,
-		&obtainedLevel,
-		&d3dContext);
+        nullptr,
+        D3D_DRIVER_TYPE_HARDWARE,
+        nullptr,
+        0,
+        requestedLevels,
+        sizeof(requestedLevels) / sizeof(D3D_FEATURE_LEVEL),
+        D3D11_SDK_VERSION,
+        &scd,
+        &d3dSwapChain,
+        &d3dDevice,
+        nullptr,
+        &d3dContext);
 
     if (SUCCEEDED(hr)) {
         // Replace the shared IDXGISwapChain virtual function pointers directly.
-        g_pSwapChainVTable = *reinterpret_cast<void***>(pSwapChain);
+        g_pSwapChainVTable = *reinterpret_cast<void***>(d3dSwapChain);
 
         WriteVTableFunction(&g_pSwapChainVTable[SWAP_CHAIN_VTABLE_PRESENT],
                 reinterpret_cast<void*>(&HookedD3D11Present),
@@ -109,7 +106,7 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
                 reinterpret_cast<void**>(&oResizeBuffers));
 
         // Cleanup the dummy resources
-        pSwapChain->Release();
+        d3dSwapChain->Release();
         d3dContext->Release();
         d3dDevice->Release();
     }
