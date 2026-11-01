@@ -7,17 +7,18 @@ struct FontConfig {
     UINT color = 0xFFFFFFFF;
 };
 
-struct MenuEntry {
-    std::string text;
-    float fX;
-    float fY;
-};
-
 struct DbgCamState {
     uint8_t* playerMaskPtr = nullptr;
     uintptr_t npc = 0;
     uint32_t lastCamMode = 0;
     uint8_t lastMask = 0;
+};
+
+struct MenuEntry {
+    std::string text;
+    float fX;
+    float fY;
+    float scale;
 };
 
 extern std::vector<MenuEntry> g_menuList;

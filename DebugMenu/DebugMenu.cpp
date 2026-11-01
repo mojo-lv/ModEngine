@@ -46,9 +46,14 @@ static std::string WideCharToUTF8(const wchar_t* wstr)
     return result;
 }
 
-void HookedDebugMenu(void* qUnkClass, float* pLocation, wchar_t* pwString)
+void HookedDebugMenu(uintptr_t arg1, float* pLocation, wchar_t* pwString)
 {
-    g_menuList.push_back(MenuEntry{WideCharToUTF8(pwString), pLocation[0], pLocation[1]});
+    g_menuList.push_back(MenuEntry{
+        WideCharToUTF8(pwString),
+        pLocation[0],
+        pLocation[1],
+        *(float*)(*(uintptr_t*)(arg1 + 0x18) + 0x90)});
+
     if (pwString) {
         if ((pwString[0] == 0x25C6 || pwString[0] == 0x25C7) && pwString[1] == L'\0') {
             g_menuSelectedIndex = g_menuList.size();

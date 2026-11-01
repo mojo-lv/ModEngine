@@ -104,9 +104,7 @@ static void OnDetach()
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
 
-    for (HMODULE dll : g_LoadedDLLs) {
-        if (dll) FreeLibrary(dll);
-    }
+    for (auto dll : g_LoadedDLLs) FreeLibrary(dll);
 }
 
 static int LoadConfig() {

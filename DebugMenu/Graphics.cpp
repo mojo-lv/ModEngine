@@ -83,10 +83,11 @@ static void DrawDebugMenu()
         }
 
         ImGui::GetWindowDrawList()->AddText(
-            gCtx.pMenuFont, g_fontConfig.size,
-            ImVec2(g_menuList[i].fX + offsetX, g_menuList[i].fY + offsetY),
-            ImColor(g_menuSelectedIndex == i ? g_fontConfig.color : IM_COL32_WHITE),
-            g_menuList[i].text.c_str(), nullptr, 0.0f, nullptr);
+            gCtx.pMenuFont,
+            g_fontConfig.size * g_menuList[i].scale,
+            ImVec2(offsetX + g_menuList[i].fX, offsetY + g_menuList[i].fY),
+            g_menuSelectedIndex == i ? g_fontConfig.color : IM_COL32_WHITE,
+            g_menuList[i].text.c_str());
     }
     g_menuList.clear();
     g_menuSelectedIndex = -1;
