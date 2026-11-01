@@ -13,6 +13,8 @@ static void** g_pSwapChainVTable = nullptr;
 constexpr size_t SWAP_CHAIN_VTABLE_PRESENT = 8;
 constexpr size_t SWAP_CHAIN_VTABLE_RESIZE_BUFFERS = 13;
 
+LRESULT CALLBACK DXGIMsgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) { return DefWindowProc(hwnd, uMsg, wParam, lParam); }
+
 static void WriteVTableFunction(void** pSlot, void* pFunction, void** pOriginalFunction)
 {
     DWORD oldProtect;
@@ -42,41 +44,61 @@ HRESULT STDMETHODCALLTYPE HookedResizeBuffers(IDXGISwapChain* pSwapChain, UINT B
 
 DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
 {
-    // Wait for dxgi.dll to be loaded
-    while (!GetModuleHandleW(L"dxgi.dll"))
-        Sleep(1000);
+    HMODULE hDXGI = 0;
+	while (!hDXGI) {
+		hDXGI = GetModuleHandleA("dxgi.dll");
+		Sleep(4000);
+	};
 
-    // Create a dummy device and swapchain to get the vtable address
-    WNDCLASSEXW wc = {
-        sizeof(WNDCLASSEXW), CS_CLASSDC, DefWindowProcW,
-        0L, 0L, GetModuleHandleW(nullptr), nullptr, nullptr, nullptr, nullptr,
-        L"DummyDX11", nullptr
-    };
-    RegisterClassExW(&wc);
-    HWND hwnd = CreateWindowW(wc.lpszClassName, L"", WS_OVERLAPPEDWINDOW,
-        0, 0, 100, 100, nullptr, nullptr, wc.hInstance, nullptr);
+	IDXGISwapChain* pSwapChain;
+	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DXGIMsgProc, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "DX", NULL };
+	RegisterClassExA(&wc);
+	HWND window = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
-    DXGI_SWAP_CHAIN_DESC sd{};
-    sd.BufferCount = 1;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hwnd;
-    sd.SampleDesc.Count = 1;
-    sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
+	D3D_FEATURE_LEVEL obtainedLevel;
+	ID3D11Device* d3dDevice = nullptr;
+	ID3D11DeviceContext* d3dContext = nullptr;
 
-    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
-    ID3D11Device* device = nullptr;
-    ID3D11DeviceContext* context = nullptr;
-    IDXGISwapChain* swapChain = nullptr;
+	DXGI_SWAP_CHAIN_DESC scd;
+	ZeroMemory(&scd, sizeof(scd));
+	scd.BufferCount = 1;
+	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	scd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	scd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+
+	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	scd.OutputWindow = window;
+	scd.SampleDesc.Count = 1;
+	scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	scd.Windowed = ((GetWindowLongPtr(window, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
+
+	scd.BufferDesc.Width = 1;
+	scd.BufferDesc.Height = 1;
+	scd.BufferDesc.RefreshRate.Numerator = 0;
+	scd.BufferDesc.RefreshRate.Denominator = 1;
+
+	UINT createFlags = 0;
+	IDXGISwapChain* d3dSwapChain = 0;
 
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
-        nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, &featureLevel, 1,
-        D3D11_SDK_VERSION, &sd, &swapChain, &device, nullptr, &context);
+		nullptr,
+		D3D_DRIVER_TYPE_HARDWARE,
+		nullptr,
+		createFlags,
+		requestedLevels,
+		sizeof(requestedLevels) / sizeof(D3D_FEATURE_LEVEL),
+		D3D11_SDK_VERSION,
+		&scd,
+		&pSwapChain,
+		&d3dDevice,
+		&obtainedLevel,
+		&d3dContext);
 
     if (SUCCEEDED(hr)) {
         // Replace the shared IDXGISwapChain virtual function pointers directly.
-        g_pSwapChainVTable = *reinterpret_cast<void***>(swapChain);
+        g_pSwapChainVTable = *reinterpret_cast<void***>(pSwapChain);
 
         WriteVTableFunction(&g_pSwapChainVTable[SWAP_CHAIN_VTABLE_PRESENT],
                 reinterpret_cast<void*>(&HookedD3D11Present),
@@ -87,13 +109,13 @@ DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
                 reinterpret_cast<void**>(&oResizeBuffers));
 
         // Cleanup the dummy resources
-        swapChain->Release();
-        context->Release();
-        device->Release();
+        pSwapChain->Release();
+        d3dContext->Release();
+        d3dDevice->Release();
     }
 
-    DestroyWindow(hwnd);
-    UnregisterClassW(wc.lpszClassName, wc.hInstance);
+    DestroyWindow(window);
+    UnregisterClassA(wc.lpszClassName, wc.hInstance);
     return 0;
 }
 
