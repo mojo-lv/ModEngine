@@ -43,18 +43,16 @@ HRESULT STDMETHODCALLTYPE HookedResizeBuffers(IDXGISwapChain* pSwapChain, UINT B
 DWORD WINAPI ApplyD3D11Hook(LPVOID _param)
 {
     // Wait for dxgi.dll to be loaded
-    HMODULE hDXGI = nullptr;
-    while (!hDXGI) {
-        hDXGI = GetModuleHandleW(L"dxgi.dll");
-        Sleep(4000);
-    };
+    while (!GetModuleHandleW(L"dxgi.dll")) {
+        Sleep(1000);
+    }
+    Sleep(4000);
 
     // Create a dummy device and swapchain to get the vtable address
     WNDCLASSEXW wc = {
-        sizeof(WNDCLASSEXW), CS_CLASSDC, DefWindowProcW,
-        0L, 0L, GetModuleHandleW(nullptr), nullptr, nullptr, nullptr, nullptr,
-        L"DummyDX11", nullptr
-    };
+        sizeof(WNDCLASSEXW), CS_CLASSDC, DefWindowProcW, 0L, 0L,
+        GetModuleHandleW(nullptr), nullptr, nullptr, nullptr, nullptr,
+        L"DummyDX11", nullptr};
     RegisterClassExW(&wc);
     HWND hwnd = CreateWindowW(wc.lpszClassName, L"", WS_OVERLAPPEDWINDOW,
         0, 0, 100, 100, nullptr, nullptr, wc.hInstance, nullptr);
