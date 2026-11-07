@@ -16,4 +16,4 @@ void PatchNpcTurnHook(uintptr_t hookAddress);
 void PatchNpcMoveHook(uintptr_t hookAddress);
 void PatchHpDisplayHook(uintptr_t hookAddress);
 
-void PatchOnlineClient(uint64_t lobbyId);
+void PatchOnlineClient(int64_t lobbyId);

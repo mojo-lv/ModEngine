@@ -227,7 +227,7 @@ void PatchHpDisplayHook(uintptr_t hookAddress)
     PatchMemory(hookAddress, bytes);
 }
 
-void PatchOnlineClient(uint64_t lobbyId)
+void PatchOnlineClient(int64_t lobbyId)
 {
     // jmp 0x140679166
     std::vector<uint8_t> bytes = {0xe9, 0x69, 0x01, 0x00, 0x00};

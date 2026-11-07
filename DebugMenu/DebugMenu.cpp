@@ -26,7 +26,7 @@ static t_sub_1410731f0 fp_sub_1410731f0 = nullptr;
 typedef int64_t(*t_lobbyResult)(void*, uint64_t*);
 static t_lobbyResult fpCreateLobbyResult = nullptr;
 
-static uint64_t lobbyId;
+static int64_t lobbyId;
 
 static DbgCamState g_CamState;
 
@@ -191,7 +191,7 @@ void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
     std::string fontPathStr = ini.GetString("debug_menu", "font_path", "");
     float fontSize = ini.GetReal("debug_menu", "font_size", 0);
     ULONG color = ini.GetUnsigned("debug_menu", "color", 0);
-    lobbyId = ini.GetUnsigned64("debug_menu", "lobby_id", -1);
+    lobbyId = ini.GetInteger64("debug_menu", "lobby_id", -1);
 
     if (lobbyId >= 0) {
         if (lobbyId > 0) PatchOnlineClient(lobbyId);
