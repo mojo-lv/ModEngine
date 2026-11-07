@@ -146,11 +146,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 return FALSE;
             }
 
-            if (g_INI.GetBoolean("logs", "console", false)) {
-                AllocConsole();
-                freopen_s(&stream, "CONOUT$", "w", stdout);
-            } else {
-                freopen_s(&stream, "mod_engine.log", "w", stdout);
+            if (g_INI.HasSection("logs")) {
+                if (g_INI.GetBoolean("logs", "console", false)) {
+                    AllocConsole();
+                    freopen_s(&stream, "CONOUT$", "w", stdout);
+                } else {
+                    freopen_s(&stream, "mod_engine.log", "w", stdout);
+                }
             }
 
             OnAttach();

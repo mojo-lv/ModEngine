@@ -229,9 +229,17 @@ void PatchHpDisplayHook(uintptr_t hookAddress)
 
 void PatchOnlineClient(uint64_t lobbyId)
 {
-    // jmp short 0x1408e4929
-    std::vector<uint8_t> bytes = {0xeb, 0x27};
-    PatchMemory(0x1408e4900, bytes);
+    // jmp 0x140679166
+    std::vector<uint8_t> bytes = {0xe9, 0x69, 0x01, 0x00, 0x00};
+    PatchMemory(0x140678ff8, bytes);
+
+    // mov dword [rax+0xaec], ecx; jmp short 0x140832c50
+    bytes = {0x89, 0x88, 0xec, 0x0a, 0x00, 0x00, 0xeb, 0x0a};
+    PatchMemory(0x140832c3e, bytes);
+
+    // jmp
+    bytes = {0xeb};
+    PatchMemory(0x140a73d34, bytes);
 
     // mov al, bl; xor al, 0x1
     bytes = {0x88, 0xd8, 0x34, 0x01};
