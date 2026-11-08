@@ -24,6 +24,7 @@ set(PROJECT_SOURCES
     D3D11Hook/D3D11Hook.cpp
     DebugMenu/DebugMenu.cpp
     DebugMenu/Graphics.cpp
+    DebugMenu/Online.cpp
     FilesMod/FilesMod.cpp
     InputProcess/KeyRemap.cpp
     InputProcess/NpcAnimChange.cpp

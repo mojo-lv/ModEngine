@@ -375,7 +375,7 @@ void EnableNpcAnimChange(const INIReader& ini, const fs::path& curPath)
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR), &HookedHpDisplay, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_HP_DISPLAY_ADDR));
-        PatchHpDisplayHook(HOOK_HP_DISPLAY_ADDR);
+        PatchCallHook(HOOK_HP_DISPLAY_ADDR);
     }
 
     if (entityId != 0) {

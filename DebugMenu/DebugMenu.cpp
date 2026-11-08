@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MemoryPatch/MemoryPatch.h"
+#include "Online.h"
 #include "DebugMenu.h"
 
 constexpr uintptr_t HOOK_DEBUG_MENU_ADDR = 0x14262d186;
@@ -19,14 +20,6 @@ static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
 
 typedef bool(*t_sub_1419f8620)(uintptr_t, void*, int32_t);
 static t_sub_1419f8620 fp_sub_1419f8620 = nullptr;
-
-typedef int64_t(*t_sub_1410731f0)(uintptr_t);
-static t_sub_1410731f0 fp_sub_1410731f0 = nullptr;
-
-typedef int64_t(*t_lobbyResult)(void*, uint64_t*);
-static t_lobbyResult fpCreateLobbyResult = nullptr;
-
-static int64_t lobbyId;
 
 static DbgCamState g_CamState;
 
@@ -165,25 +158,6 @@ bool hook_sub_1419f8620(uintptr_t arg1, void* arg2, int32_t arg3)
     return fp_sub_1419f8620(arg1, arg2, arg3);
 }
 
-int64_t hook_sub_1410731f0(uintptr_t arg1)
-{
-    if (*(uint32_t*)(arg1 + 0x184) == 3) {
-        // State : Host
-        return 0;
-    }
-    return fp_sub_1410731f0(arg1);
-}
-
-int64_t HookedCreateLobbyResult(void* arg1, uint64_t* arg2)
-{
-    if (arg2[1]) {
-        std::cout << "[online] lobby_id: " << arg2[1] << std::endl;
-    } else {
-        std::cout << "[online] create lobby failed" << std::endl;
-    }
-    return fpCreateLobbyResult(arg1, arg2);
-}
-
 void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
 {
     g_log_debug_menu = ini.GetBoolean("logs", "debug_menu", false);
@@ -191,16 +165,9 @@ void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
     std::string fontPathStr = ini.GetString("debug_menu", "font_path", "");
     float fontSize = ini.GetReal("debug_menu", "font_size", 0);
     ULONG color = ini.GetUnsigned("debug_menu", "color", 0);
-    lobbyId = ini.GetInteger64("debug_menu", "lobby_id", -1);
+    int64_t lobbyId = ini.GetInteger64("debug_menu", "lobby_id", -1);
 
-    if (lobbyId >= 0) {
-        if (lobbyId > 0) PatchOnlineClient(lobbyId);
-
-        MH_CreateHook(reinterpret_cast<LPVOID>(0x141c0cbe0), &HookedCreateLobbyResult,
-                    reinterpret_cast<LPVOID*>(&fpCreateLobbyResult));
-        MH_CreateHook(reinterpret_cast<LPVOID>(0x1410731f0), &hook_sub_1410731f0,
-                    reinterpret_cast<LPVOID*>(&fp_sub_1410731f0));
-    }
+    if (lobbyId >= 0) EnableOnline(lobbyId);
 
     if (!fontPathStr.empty() && fs::exists(curPath / fontPathStr)) {
         g_fontConfig.path = (curPath / fontPathStr).string();
