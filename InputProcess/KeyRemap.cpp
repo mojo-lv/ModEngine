@@ -28,14 +28,14 @@ int64_t hook_D2DMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     if (it != D2DRemapData.end()) {
         uint32_t key = it->second;
         if (logKeyRemap) {
-            std::cout << "[key_remap] D2D: " << std::hex << arg2 << "_" << arg3
+            std::cout << std::hex << "[key_remap] D2D: " << arg2 << "_" << arg3
                     << " remap to " << key << std::endl;
         }
         return fp_D2DMapping(arg1, arg2, key, arg4, arg5);
     }
 
     if (logKeyRemap) {
-        std::cout << "[key_remap] D2D: " << std::hex << arg2 << "_" << arg3 << std::endl;
+        std::cout << std::hex << "[key_remap] D2D: " << arg2 << "_" << arg3 << std::endl;
     }
     return fp_D2DMapping(arg1, arg2, arg3, arg4, arg5);
 }
@@ -46,7 +46,7 @@ int64_t hook_A2AMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     if (it != A2ARemapData.end()) {
         std::pair<uint32_t, uint32_t> keyPair = it->second;
         if (logKeyRemap) {
-            std::cout << "[key_remap] A2A: " << std::hex << arg2 << "_" << arg3
+            std::cout << std::hex << "[key_remap] A2A: " << arg2 << "_" << arg3
                     << " remap to " << keyPair.first << "_" << keyPair.second << std::endl;
         }
         int64_t tmp = 0;
@@ -55,7 +55,7 @@ int64_t hook_A2AMapping(uintptr_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     }
 
     if (logKeyRemap) {
-        std::cout << "[key_remap] A2A: " << std::hex << arg2 << "_" << arg3 << std::endl;
+        std::cout << std::hex << "[key_remap] A2A: " << arg2 << "_" << arg3 << std::endl;
     }
     return fp_A2AMapping(arg1, arg2, arg3, arg4);
 }

@@ -11,7 +11,7 @@ static t_lobbyResult fpCreateLobbyResult = nullptr;
 int64_t HookedCreateLobbyResult(void* arg1, uint64_t* arg2)
 {
     if (arg2[1]) {
-        std::cout << "[online] lobby_id: " << arg2[1] << std::endl;
+        std::cout << std::dec << "[online] lobby_id: " << arg2[1] << std::endl;
     } else {
         std::cout << "[online] create lobby failed" << std::endl;
     }

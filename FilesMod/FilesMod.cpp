@@ -9,11 +9,13 @@ static t_CreateFileW fpCreateFileW = nullptr;
 static t_CopyFileW fpCopyFileW = nullptr;
 
 static std::unordered_map<std::wstring, std::wstring> rel_to_index;
-static std::unordered_map<std::wstring, std::wstring> index_to_mod;
+static std::unordered_map<std::wstring, std::wstring> index_to_path;
+static std::unordered_map<std::wstring, std::wstring> index_to_mod_name;
 
 static size_t g_cur_len;
 static std::wstring g_save_path;
 static bool g_skip_cutscenes;
+static bool g_log_mods;
 
 static bool ScanModsDir(const fs::path& modsDir)
 {
@@ -42,7 +44,8 @@ static bool ScanModsDir(const fs::path& modsDir)
     for (const auto& entry : entries) {
         swprintf(indexBuffer, _countof(indexBuffer), L"%02x", (index++) & 0xFF);
         std::wstring indexStr(indexBuffer);
-        index_to_mod.try_emplace(indexStr, entry.path().wstring());
+        index_to_path.try_emplace(indexStr, entry.path().wstring());
+        if (g_log_mods) index_to_mod_name.try_emplace(indexStr, entry.path().filename().wstring());
         
         for (const auto& p : fs::recursive_directory_iterator(entry.path())) {
             if (!p.is_directory()) {
@@ -63,6 +66,8 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
     UINT64 len = p1->length;
     if (len > 7 && path[6] == L'/' && path[5] == L':' && path[0] == L'd') {
         // data1:/
+        if (g_log_mods) std::wcout << path;
+
         auto index = rel_to_index.find(std::wstring(path + 7));
         if (index != rel_to_index.end()) {
             *path = L'.';
@@ -71,13 +76,20 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             *(path + 3) = index->second[0];
             *(path + 4) = index->second[1];
             *(path + 5) = L'>';
+            if (g_log_mods) {
+                auto mod_name = index_to_mod_name.find(index->second);
+                if (mod_name != index_to_mod_name.end()) std::wcout << L" -> " << mod_name->second;
+            }
         } else if ((len == 43) && g_skip_cutscenes) {
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(7, 8, L"cutscene") == 0) {
                 *(path + 7) = L'_';
+                if (g_log_mods) std::wcout << L" -> NULL";
             }
         }
+
+        if (g_log_mods) std::wcout << std::endl;
     }
 
     return p1;
@@ -90,8 +102,8 @@ HANDLE WINAPI HookedCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD
     std::wstring_view path_view(lpFileName);
     if ((path_view.length() > g_cur_len + 4) && (path_view[g_cur_len] == L'<') && (path_view[g_cur_len + 3] == L'>')) {
         std::wstring index_key(path_view.substr(g_cur_len + 1, 2));
-        auto it = index_to_mod.find(index_key);
-        if (it != index_to_mod.end()) {
+        auto it = index_to_path.find(index_key);
+        if (it != index_to_path.end()) {
             std::wstring new_path = it->second;
             new_path.append(path_view.substr(g_cur_len + 4));
             return fpCreateFileW(new_path.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
@@ -125,6 +137,7 @@ void ApplyFilesMod(const INIReader& ini, const fs::path& curPath)
     std::string mods = ini.GetString("files", "mods", "");
     std::string save = ini.GetString("files", "save", "");
     g_skip_cutscenes = ini.GetBoolean("files", "skip_cutscenes", false);
+    g_log_mods = ini.GetBoolean("logs", "mods", false);
 
     g_cur_len = curPath.wstring().length();
     if (curPath.wstring().back() != L'\\') {

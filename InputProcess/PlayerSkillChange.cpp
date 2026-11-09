@@ -195,7 +195,7 @@ void hook_sub_140dd9c60(uint32_t* arg1)
         case 4:
             skillEquipData[arg1[2]] = arg1[18];
             if (logEquipSkill) {
-                std::cout << "[equip_skill] " << arg1[20] << std::endl;
+                std::cout << std::dec << "[equip_skill] " << arg1[20] << std::endl;
             }
             break;
     }

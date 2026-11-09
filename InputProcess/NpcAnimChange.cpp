@@ -170,7 +170,7 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
         }
 
         if (logAnim) {
-            std::cout << "[npc_anim_change] "
+            std::cout << std::dec << "[npc_anim_change] "
                 << "keyAnim: " << arg2
                 << ", curAnim: " << curAnim
                 << ", newAnim: " << *pAnim << std::endl;

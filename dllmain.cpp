@@ -140,7 +140,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
             FILE *stream;
             if (LoadConfig()) {
-                freopen_s(&stream, "mod_engine.log", "w", stdout);
+                fs::path logPath(g_CurPath / "mod_engine.log");
+                freopen_s(&stream, logPath.string().c_str(), "w", stdout);
                 std::cout << "Can't load 'mod_engine.ini'" << std::endl;
                 std::cout << g_INI.ParseErrorMessage() << std::endl;
                 return FALSE;
@@ -151,7 +152,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                     AllocConsole();
                     freopen_s(&stream, "CONOUT$", "w", stdout);
                 } else {
-                    freopen_s(&stream, "mod_engine.log", "w", stdout);
+                    fs::path logPath(g_CurPath / "mod_engine.log");
+                    if (fs::exists(logPath)) fs::resize_file(logPath, 0);
+                    freopen_s(&stream, logPath.string().c_str(), "a", stdout);
                 }
             }
 
