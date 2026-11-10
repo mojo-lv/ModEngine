@@ -24,6 +24,8 @@ static t_SteamAPI_Init fpSteamInit = nullptr;
 static fs::path g_CurPath;
 static std::vector<HMODULE> g_LoadedDLLs;
 static INIReader g_INI("mod_engine.ini");
+static std::ofstream g_LogFile;
+static std::streambuf* g_OriginalBuf = nullptr;
 
 static void ApplyPostUnpackHooks()
 {
@@ -96,10 +98,20 @@ static void OnAttach()
     }
 }
 
+static void ShutdownLog()
+{
+    if (g_OriginalBuf) {
+        g_LogFile.flush();
+        std::cout.rdbuf(g_OriginalBuf);
+        g_LogFile.close();
+    }
+}
+
 static void OnDetach()
 {
     RestoreD3D11Hook();
     ShutdownImGui();
+    ShutdownLog();
 
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
@@ -138,23 +150,27 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hModule);
 
-            FILE *stream;
             if (LoadConfig()) {
-                fs::path logPath(g_CurPath / "mod_engine.log");
-                freopen_s(&stream, logPath.string().c_str(), "w", stdout);
-                std::cout << "Can't load 'mod_engine.ini'" << std::endl;
-                std::cout << g_INI.ParseErrorMessage() << std::endl;
+                g_LogFile.open(g_CurPath / "mod_engine.log");
+                if (g_LogFile.is_open()) {
+                    g_LogFile << "Can't load 'mod_engine.ini'" << std::endl;
+                    g_LogFile << g_INI.ParseErrorMessage() << std::endl;
+                    g_LogFile.close();
+                }
                 return FALSE;
             }
 
             if (g_INI.HasSection("logs")) {
                 if (g_INI.GetBoolean("logs", "console", false)) {
                     AllocConsole();
+                    FILE *stream;
                     freopen_s(&stream, "CONOUT$", "w", stdout);
                 } else {
-                    fs::path logPath(g_CurPath / "mod_engine.log");
-                    if (fs::exists(logPath)) fs::resize_file(logPath, 0);
-                    freopen_s(&stream, logPath.string().c_str(), "a", stdout);
+                    g_LogFile.open(g_CurPath / "mod_engine.log");
+                    if (g_LogFile.is_open()) {
+                        g_OriginalBuf = std::cout.rdbuf();
+                        std::cout.rdbuf(g_LogFile.rdbuf());
+                    }
                 }
             }
 

@@ -15,6 +15,7 @@
 
 #include <string>
 #include <vector>
+#include <fstream>
 #include <iostream>
 #include <filesystem>  // C++17
 #include <algorithm>
