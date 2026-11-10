@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "utils.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "Online.h"
 #include "DebugMenu.h"
@@ -27,25 +28,6 @@ std::vector<MenuEntry> g_menuList;
 int g_menuSelectedIndex = -1;
 FontConfig g_fontConfig;
 bool g_log_debug_menu = false;
-
-static std::string WideCharToUTF8(const wchar_t* wstr)
-{
-    if (!wstr || *wstr == 0) return "";
-
-    int wlen = static_cast<int>(wcslen(wstr));
-    int size_needed = WideCharToMultiByte(
-        CP_UTF8, 0, wstr, wlen,
-        nullptr, 0, nullptr, nullptr);
-    if (size_needed <= 0) return "";
-
-    std::string result(size_needed, '\0');
-    int converted_size = WideCharToMultiByte(
-        CP_UTF8, 0, wstr, wlen,
-        result.data(), size_needed, nullptr, nullptr);
-    if (converted_size <= 0) return "";
-
-    return result;
-}
 
 void HookedDebugMenu(uintptr_t arg1, float* pLocation, wchar_t* pwString)
 {

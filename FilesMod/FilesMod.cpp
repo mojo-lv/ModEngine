@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "utils.h"
 #include "MemoryPatch/MemoryPatch.h"
 #include "FilesMod.h"
 
@@ -66,7 +67,7 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
     UINT64 len = p1->length;
     if (len > 7 && path[6] == L'/' && path[5] == L':' && path[0] == L'd') {
         // data1:/
-        if (g_log_mods) std::wcout << path;
+        if (g_log_mods) std::cout << WideCharToUTF8(path);
 
         auto index = rel_to_index.find(std::wstring(path + 7));
         if (index != rel_to_index.end()) {
@@ -78,18 +79,20 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
             *(path + 5) = L'>';
             if (g_log_mods) {
                 auto mod_name = index_to_mod_name.find(index->second);
-                if (mod_name != index_to_mod_name.end()) std::wcout << L" -> " << mod_name->second;
+                if (mod_name != index_to_mod_name.end()) {
+                    std::cout << " -> " << WideCharToUTF8(mod_name->second.c_str());
+                }
             }
         } else if ((len == 43) && g_skip_cutscenes) {
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(7, 8, L"cutscene") == 0) {
                 *(path + 7) = L'_';
-                if (g_log_mods) std::wcout << L" -> NULL";
+                if (g_log_mods) std::cout << " -> NULL";
             }
         }
 
-        if (g_log_mods) std::wcout << std::endl;
+        if (g_log_mods) std::cout << std::endl;
     }
 
     return p1;
