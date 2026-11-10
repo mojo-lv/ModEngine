@@ -232,9 +232,11 @@ void PatchOnline(int64_t lobbyId)
     // Goods usable online‌
     std::vector<uint8_t> bytes = {0xeb};
     PatchMemory(0x140852836, bytes);
+    bytes = {0x0f, 0xb6, 0xcb, 0xeb, 0x13};
+    PatchMemory(0x140852b08, bytes);
 
     if (lobbyId > 0) {
-        // chrType
+        // CHR_TYPE
         bytes = {0x00};
         PatchMemory(0x1408aee10, bytes);
 
