@@ -19,6 +19,7 @@ endif()
 # 定义项目源文件列表
 set(PROJECT_SOURCES
     pch.cpp
+    utils.cpp
     dllmain.cpp
     exports.def
     D3D11Hook/D3D11Hook.cpp
