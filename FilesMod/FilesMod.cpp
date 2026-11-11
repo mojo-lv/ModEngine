@@ -16,6 +16,7 @@ static std::unordered_map<std::wstring, std::wstring> index_to_mod_name;
 static size_t g_cur_len;
 static std::wstring g_save_path;
 static bool g_skip_cutscenes;
+static bool g_disable_parts_lod;
 static bool g_log_mods;
 
 static bool ScanModsDir(const fs::path& modsDir)
@@ -69,13 +70,12 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
         // data1:/
         if (g_log_mods) std::cout << WideCharToUTF8(path);
 
-        bool online_parts = false;
-        if (len == 37 && *(uint32_t*)(*(uintptr_t*)(0x143d67c90) + 0xdc) == 5) {
+        if (len == 37 && g_disable_parts_lod) {
             // Online, data2:/parts/am_m_9000_l.partsbnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(22, 8, L"_l.parts") == 0) {
                 wcscpy(path + 22, L".partsbnd.dcx");
-                online_parts = true;
+                if (g_log_mods) std::cout << " -> " << WideCharToUTF8(path);
             }
         }
 
@@ -100,8 +100,6 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
                 *(path + 7) = L'_';
                 if (g_log_mods) std::cout << " -> NULL";
             }
-        } else if (online_parts && g_log_mods) {
-            std::cout << " -> " << WideCharToUTF8(path);
         }
 
         if (g_log_mods) std::cout << std::endl;
@@ -152,6 +150,7 @@ void ApplyFilesMod(const INIReader& ini, const fs::path& curPath)
     std::string mods = ini.GetString("files", "mods", "");
     std::string save = ini.GetString("files", "save", "");
     g_skip_cutscenes = ini.GetBoolean("files", "skip_cutscenes", false);
+    g_disable_parts_lod = ini.GetBoolean("files", "disable_parts_lod", false);
     g_log_mods = ini.GetBoolean("logs", "mods", false);
 
     g_cur_len = curPath.wstring().length();
