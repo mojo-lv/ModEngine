@@ -69,6 +69,16 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
         // data1:/
         if (g_log_mods) std::cout << WideCharToUTF8(path);
 
+        bool online_parts = false;
+        if (len == 37 && *(uint32_t*)(*(uintptr_t*)(0x143d67c90) + 0xdc) == 5) {
+            // Online, data2:/parts/am_m_9000_l.partsbnd.dcx
+            std::wstring_view path_view(path);
+            if (path_view.compare(22, 8, L"_l.parts") == 0) {
+                wcscpy(path + 22, L".partsbnd.dcx");
+                online_parts = true;
+            }
+        }
+
         auto index = rel_to_index.find(std::wstring(path + 7));
         if (index != rel_to_index.end()) {
             *path = L'.';
@@ -83,20 +93,15 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
                     std::cout << " -> " << WideCharToUTF8(mod_name->second.c_str());
                 }
             }
-        } else if ((len == 43) && g_skip_cutscenes) {
+        } else if (len == 43 && g_skip_cutscenes) {
             // data1:/cutscene/s11_02_0020.cutscenebnd.dcx
             std::wstring_view path_view(path);
             if (path_view.compare(7, 8, L"cutscene") == 0) {
                 *(path + 7) = L'_';
                 if (g_log_mods) std::cout << " -> NULL";
             }
-        } else if (len == 37 && *(uint32_t*)(*(uintptr_t*)(0x143d67c90) + 0xdc) == 5) {
-            // Online, data2:/parts/am_m_9000_l.partsbnd.dcx
-            std::wstring_view path_view(path);
-            if (path_view.compare(22, 8, L"_l.parts") == 0) {
-                wcscpy(path + 22, L".partsbnd.dcx");
-                if (g_log_mods) std::cout << " -> " << WideCharToUTF8(path);
-            }
+        } else if (online_parts && g_log_mods) {
+            std::cout << " -> " << WideCharToUTF8(path);
         }
 
         if (g_log_mods) std::cout << std::endl;
