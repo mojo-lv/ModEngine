@@ -69,15 +69,6 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
         // data1:/
         if (g_log_mods) std::cout << WideCharToUTF8(path);
 
-        if (len == 37 && *(uint32_t*)(*(uintptr_t*)(0x143d67c90) + 0xdc) == 5) {
-            // Online, data2:/parts/am_m_9000_l.partsbnd.dcx
-            std::wstring_view path_view(path);
-            if (path_view.compare(22, 8, L"_l.parts") == 0) {
-                wcscpy(path + 22, L".partsbnd.dcx");
-                if (g_log_mods) std::cout << " -> " << WideCharToUTF8(path);
-            }
-        }
-
         auto index = rel_to_index.find(std::wstring(path + 7));
         if (index != rel_to_index.end()) {
             *path = L'.';
