@@ -90,6 +90,13 @@ SekiroPath* HookedGetSekiroPath(SekiroPath* p1, void* p2, void* p3, void* p4, vo
                 *(path + 7) = L'_';
                 if (g_log_mods) std::cout << " -> NULL";
             }
+        } else if (len == 37 && *(uint32_t*)(*(uintptr_t*)(0x143d67c90) + 0xdc) == 5) {
+            // Online, data2:/parts/am_m_9000_l.partsbnd.dcx
+            std::wstring_view path_view(path);
+            if (path_view.compare(22, 8, L"_l.parts") == 0) {
+                wcscpy(path + 22, L".partsbnd.dcx");
+                if (g_log_mods) std::cout << " -> " << WideCharToUTF8(path);
+            }
         }
 
         if (g_log_mods) std::cout << std::endl;
