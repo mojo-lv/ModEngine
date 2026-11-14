@@ -235,6 +235,14 @@ void PatchOnline(int64_t lobbyId)
     bytes = {0x0f, 0xb6, 0xcb, 0xeb, 0x13};
     PatchMemory(0x140852b08, bytes);
 
+    // Hide FDP_ text
+    bytes = {0xe8, 0xc6, 0x30, 0x9f, 0xff};
+    PatchMemory(0x140c7db35, bytes);
+
+    // Prevent lock-on from switching to secondary lock points‌
+    bytes = {0xeb};
+    PatchMemory(0x1409c6628, bytes);
+
     if (lobbyId > 0) {
         // CHR_TYPE
         bytes = {0x00};
