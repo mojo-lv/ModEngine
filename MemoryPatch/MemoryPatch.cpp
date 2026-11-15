@@ -243,6 +243,10 @@ void PatchOnline(int64_t lobbyId)
     bytes = {0xeb};
     PatchMemory(0x1409c6628, bytes);
 
+    // call 0x1409f5170
+    bytes = {0xe8, 0x3b, 0x2d, 0x11, 0x00};
+    PatchMemory(0x1408e2430, bytes);
+
     if (lobbyId > 0) {
         // CHR_TYPE
         bytes = {0x00};
