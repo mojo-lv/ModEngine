@@ -2,6 +2,13 @@
 #include "MemoryPatch/MemoryPatch.h"
 #include "Online.h"
 
+constexpr uintptr_t HOOK_ONLINE_LOCK_ADDR = 0x1409c6634;
+
+static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
+
+typedef uintptr_t(*t_getChrIns)(uintptr_t);
+static t_getChrIns fpGetChrIns = reinterpret_cast<t_getChrIns>(0x1409c31f0);
+
 typedef int64_t(*t_sub_1410731f0)(uintptr_t);
 static t_sub_1410731f0 fp_sub_1410731f0 = nullptr;
 
@@ -18,6 +25,24 @@ int64_t HookedCreateLobbyResult(void* arg1, uint64_t* arg2)
     return fpCreateLobbyResult(arg1, arg2);
 }
 
+bool HookedOnlineLock(uintptr_t arg1)
+{
+    if (*(uint8_t*)(arg1 + 0x72) & 1) return true;
+
+    if (*(uint8_t*)(arg1 + 0x72) & 2) {
+        uintptr_t chr = fpGetChrIns(arg1);
+        if (!chr) return true;
+
+        uint16_t net = *(uint16_t*)(chr + 0x78);
+        if (!net) return true;
+
+        if (*(uintptr_t*)(*pWorldChrMan + 0x518 + (net >> 11) * 8)
+            != *pWorldChrMan + 0x40) return true;
+    }
+
+    return false;
+}
+
 int64_t hook_sub_1410731f0(uintptr_t arg1)
 {
     if (*(uint32_t*)(arg1 + 0x184) == 3) {
@@ -30,6 +55,11 @@ int64_t hook_sub_1410731f0(uintptr_t arg1)
 void EnableOnline(int64_t lobbyId)
 {
     PatchOnline(lobbyId);
+
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_ONLINE_LOCK_ADDR), &HookedOnlineLock, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_ONLINE_LOCK_ADDR));
+        PatchOnlineLockHook(HOOK_ONLINE_LOCK_ADDR);
+    }
 
     if (lobbyId == 0) {
         MH_CreateHook(reinterpret_cast<LPVOID>(0x141c0cbe0), &HookedCreateLobbyResult,

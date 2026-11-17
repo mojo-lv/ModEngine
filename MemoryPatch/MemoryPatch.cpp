@@ -227,6 +227,23 @@ void PatchCallHook(uintptr_t hookAddress)
     PatchMemory(hookAddress, bytes);
 }
 
+void PatchOnlineLockHook(uintptr_t hookAddress)
+{
+    /*  movzx eax, byte [rdi+0x72]
+        and al, 0x1
+        cmp byte [r14+0x29c9], 0x0
+        je short 0x1409c6639
+        mov rcx, rdi
+        nop; call        */
+    std::vector<uint8_t> bytes = {0x0f, 0xb6, 0x47, 0x72,
+                        0x24, 0x01,
+                        0x41, 0x80, 0xbe, 0xc9, 0x29, 0x00, 0x00, 0x00,
+                        0x74, 0x09,
+                        0x48, 0x89, 0xf9,
+                        0x90, 0xe8};
+    PatchMemory(hookAddress - 0x14, bytes);
+}
+
 void PatchOnline(int64_t lobbyId)
 {
     // Goods usable online‌
@@ -238,10 +255,6 @@ void PatchOnline(int64_t lobbyId)
     // Hide FDP_ text
     bytes = {0xe8, 0xc6, 0x30, 0x9f, 0xff};
     PatchMemory(0x140c7db35, bytes);
-
-    // Prevent lock-on from switching to secondary lock points‌
-    bytes = {0xeb};
-    PatchMemory(0x1409c6628, bytes);
 
     // call 0x1409f5170
     bytes = {0xe8, 0x3b, 0x2d, 0x11, 0x00};

@@ -14,7 +14,7 @@ constexpr uintptr_t HOOK_DBG_CAM_FREE_F_ADDR = 0x140a750e8;
 static uintptr_t* const pNPCList = reinterpret_cast<uintptr_t*>(0x143d547d8);
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
-static uint8_t* const freezePtr = reinterpret_cast<uint8_t*>(0x143d7acb2);
+static uint8_t* const pFreeze = reinterpret_cast<uint8_t*>(0x143d7acb2);
 
 typedef uintptr_t(*t_addNPC)(uintptr_t, uintptr_t*);
 static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
@@ -103,7 +103,7 @@ int64_t HookedDbgCamNpcCtrl(uint32_t* arg1)
     }
 
     if ((camMode == 1) != (g_CamState.lastCamMode == 1)) {
-        *freezePtr = (camMode == 1) ? 1 : 2;
+        *pFreeze = (camMode == 1) ? 1 : 2;
     }
 
     if ((camMode == 2) != (g_CamState.lastCamMode == 2)) {
