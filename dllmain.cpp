@@ -67,13 +67,18 @@ static void LoadDlls()
     if (!fs::exists(dllsDir) || !fs::is_directory(dllsDir)) return;
 
     for (const auto& p : fs::directory_iterator(dllsDir)) {
-        if (!p.is_directory()) {
-            wchar_t f = p.path().filename().wstring().front();
-            if ((f != L'_') && (f != L'.')) {
-                hMod = LoadLibraryW(p.path().wstring().c_str());
-                if (hMod) g_LoadedDLLs.push_back(hMod);
-            }
-        }
+        if (p.is_directory()) continue;
+
+        const std::wstring filename = p.path().filename().wstring();
+        if (filename.empty() || filename.front() == L'_' || filename.front() == L'.') continue;
+
+        std::wstring extension = p.path().extension().wstring();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+            [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
+        if (extension != L".dll") continue;
+
+        hMod = LoadLibraryW(p.path().wstring().c_str());
+        if (hMod) g_LoadedDLLs.push_back(hMod);
     }
 }
 
