@@ -256,9 +256,13 @@ void PatchOnline(int64_t lobbyId)
     bytes = {0xe8, 0xc6, 0x30, 0x9f, 0xff};
     PatchMemory(0x140c7db35, bytes);
 
-    // call 0x1409f5170
+    // White/Red Phantom
     bytes = {0xe8, 0x3b, 0x2d, 0x11, 0x00};
     PatchMemory(0x1408e2430, bytes);
+
+    // Send control NPC data‌
+    bytes = {0x20, 0x01};
+    PatchMemory(0x1407dece1, bytes);
 
     if (lobbyId > 0) {
         // CHR_TYPE

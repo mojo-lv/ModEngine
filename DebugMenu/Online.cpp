@@ -5,15 +5,19 @@
 constexpr uintptr_t HOOK_ONLINE_LOCK_ADDR = 0x1409c6634;
 
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
+static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
 
 typedef uintptr_t(*t_getChrIns)(uintptr_t);
 static t_getChrIns fpGetChrIns = reinterpret_cast<t_getChrIns>(0x1409c31f0);
 
-typedef int64_t(*t_sub_1410731f0)(uintptr_t);
-static t_sub_1410731f0 fp_sub_1410731f0 = nullptr;
-
 typedef int64_t(*t_lobbyResult)(void*, uint64_t*);
 static t_lobbyResult fpCreateLobbyResult = nullptr;
+
+typedef int32_t(*t_sub_1410731f0)(uintptr_t);
+static t_sub_1410731f0 fp_sub_1410731f0 = nullptr;
+
+typedef int32_t(*t_sub_1409f0230)(uintptr_t);
+static t_sub_1409f0230 fp_sub_1409f0230 = nullptr;
 
 int64_t HookedCreateLobbyResult(void* arg1, uint64_t* arg2)
 {
@@ -43,7 +47,7 @@ bool HookedOnlineLock(uintptr_t arg1)
     return false;
 }
 
-int64_t hook_sub_1410731f0(uintptr_t arg1)
+int32_t hook_sub_1410731f0(uintptr_t arg1)
 {
     if (*(uint32_t*)(arg1 + 0x184) == 3) {
         // State : Host
@@ -52,9 +56,21 @@ int64_t hook_sub_1410731f0(uintptr_t arg1)
     return fp_sub_1410731f0(arg1);
 }
 
+int32_t hook_sub_1409f0230(uintptr_t arg1)
+{
+    if (*(uintptr_t*)(*pNPCPlayer + 0x160) == arg1) {
+        // Highest priority
+        return 0x7FFF;
+    }
+    return fp_sub_1409f0230(arg1);
+}
+
 void EnableOnline(int64_t lobbyId)
 {
     PatchOnline(lobbyId);
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x1409f0230), &hook_sub_1409f0230,
+                    reinterpret_cast<LPVOID*>(&fp_sub_1409f0230));
 
     if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_ONLINE_LOCK_ADDR), &HookedOnlineLock, NULL) == MH_OK) {
         MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_ONLINE_LOCK_ADDR));
