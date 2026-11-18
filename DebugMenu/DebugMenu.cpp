@@ -22,6 +22,9 @@ static t_addNPC fpAddNPC = reinterpret_cast<t_addNPC>(0x140615c90);
 typedef bool(*t_sub_1419f8620)(uintptr_t, void*, int32_t);
 static t_sub_1419f8620 fp_sub_1419f8620 = nullptr;
 
+typedef uint32_t(*t_sub_140d52a60)(uintptr_t);
+static t_sub_140d52a60 fp_sub_140d52a60 = nullptr;
+
 static DbgCamState g_CamState;
 
 std::vector<MenuEntry> g_menuList;
@@ -140,6 +143,17 @@ bool hook_sub_1419f8620(uintptr_t arg1, void* arg2, int32_t arg3)
     return fp_sub_1419f8620(arg1, arg2, arg3);
 }
 
+uint32_t hook_sub_140d52a60(uintptr_t arg1)
+{
+    uint32_t result = fp_sub_140d52a60(arg1);
+    uint32_t hp = *(uint32_t*)(arg1 + 0x3e4);
+    uint32_t hpMax = *(uint32_t*)(arg1 + 0x3dc);
+    if (hp > hpMax) {
+        return result + hpMax - hp;
+    }
+    return result;
+}
+
 void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
 {
     g_log_debug_menu = ini.GetBoolean("logs", "debug_menu", false);
@@ -200,6 +214,9 @@ void EnableDebugMenu(const INIReader& ini, const fs::path& curPath)
 
     MH_CreateHook(reinterpret_cast<LPVOID>(0x1419f8620), &hook_sub_1419f8620, 
                     reinterpret_cast<LPVOID*>(&fp_sub_1419f8620));
+
+    MH_CreateHook(reinterpret_cast<LPVOID>(0x140d52a60), &hook_sub_140d52a60, 
+                    reinterpret_cast<LPVOID*>(&fp_sub_140d52a60));
 
     PatchDebugMenuMisc();
 }
