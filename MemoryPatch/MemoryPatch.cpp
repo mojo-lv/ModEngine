@@ -53,13 +53,33 @@ void PatchSaveFileCheck()
 
 void PatchDebugMenuMisc()
 {
-    // mov eax, dword [rcx+0x134]
+    // Default HP
     std::vector<uint8_t> bytes = {0x8b, 0x81, 0x34, 0x01, 0x00, 0x00};
     PatchMemory(0x140bd718b, bytes);
 
-    // eax
+    // Default Stamina
     bytes = {0x44};
     PatchMemory(0x140bd73e1, bytes);
+
+    // Set HP/MP/SP/arts point [push enter]
+    // BaseMaxHp
+    bytes = {0x8b, 0x4b, 0x20, 0x89, 0xc8, 0xeb, 0x0d};
+    PatchMemory(0x1407c604f, bytes);
+    // MaxMp
+    bytes[2] = 0x2c;
+    PatchMemory(0x1407c60a1, bytes);
+    // BaseMaxSp
+    bytes[2] = 0x3c;
+    PatchMemory(0x1407c60f3, bytes);
+
+    // CharacterId Max 99999999
+    bytes = {0xff, 0xe0, 0xf5, 0x05};
+    PatchMemory(0x1409fdffc, bytes);
+
+    // FPS
+    bytes = {0x33};
+    PatchMemory(0x142bcefaa, bytes);
+    PatchMemory(0x142bcefda, bytes);
 
     /*  je 0x140c10988
         mov rcx, rax
@@ -72,14 +92,6 @@ void PatchDebugMenuMisc()
             0x48, 0x89, 0xc7,
             0xeb, 0x24};
     PatchMemory(0x140c108a7, bytes);
-
-    // 99999999
-    bytes = {0xff, 0xe0, 0xf5, 0x05};
-    PatchMemory(0x1409fdffc, bytes);
-
-    bytes = {0x33};
-    PatchMemory(0x142bcefaa, bytes);
-    PatchMemory(0x142bcefda, bytes);
 }
 
 void PatchDebugMenuHook(uintptr_t hookAddress)
