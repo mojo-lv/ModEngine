@@ -129,7 +129,7 @@ BOOL WINAPI HookedCopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, B
 {
     std::wstring_view path_view(lpExistingFileName);
     if (path_view.length() > 9 && path_view.compare(path_view.length() - 9, 9, L"S0000.sl2") == 0) {
-        return TRUE;
+        return fpCopyFileW(g_save_path.c_str(), lpNewFileName, bFailIfExists);
     }
 
     return fpCopyFileW(lpExistingFileName, lpNewFileName, bFailIfExists);

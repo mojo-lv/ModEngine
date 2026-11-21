@@ -29,7 +29,8 @@ static t_sub_140751180 fp_sub_140751180 = reinterpret_cast<t_sub_140751180>(0x14
 
 static std::unordered_set<uint32_t> modAnimSet;
 static std::map<std::pair<uint32_t, uint32_t>, uint32_t> animMap;
-static std::unordered_map<uint32_t, uint32_t> directAnimMap;
+static std::map<std::pair<uint32_t, uint32_t>, uint32_t> directAnimMap;
+static std::unordered_map<uint32_t, std::vector<uint32_t>> animKeys;
 
 static float turnSpeed = 200;
 static float playSpeed = 0;
@@ -57,6 +58,7 @@ static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t 
         modAnimSet.clear();
         animMap.clear();
         directAnimMap.clear();
+        animKeys.clear();
 
         size_t idLen = idStr.size();
         size_t secLen;
@@ -75,13 +77,18 @@ static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t 
     }
 
     size_t pos, start, valSize;
-    uint32_t keyAnim, curAnim, newAnim;
+    uint32_t keyAnim, curAnim, newAnim, curKey;
     for (const auto& configKey : config.Keys(section)) {
         std::string valStr = config.GetString(section, configKey, "");
         if (!valStr.empty()) {
             pos = configKey.find('_');
             if (pos == std::string::npos) {
-                keyAnim = std::stoul(configKey);
+                keyAnim = std::stoul(configKey, &pos);
+                if (configKey[pos] == '.') {
+                    curKey = std::toupper((uint8_t)configKey[pos + 1]);
+                } else {
+                    curKey = 0;
+                }
                 curAnim = 0;
             } else {
                 keyAnim = std::stoul(configKey.substr(0, pos));
@@ -100,7 +107,8 @@ static void LoadAnimConfig(const fs::path& path, uint32_t characterId, uint32_t 
                     if (curAnim) {
                         animMap.insert_or_assign({keyAnim, curAnim}, newAnim);
                     } else {
-                        directAnimMap.insert_or_assign(keyAnim, newAnim);
+                        directAnimMap.insert_or_assign({keyAnim, curKey}, newAnim);
+                        if (curKey) animKeys[keyAnim].push_back(curKey);
                     }
                     curAnim = newAnim;
                 }
@@ -155,15 +163,27 @@ uintptr_t HookedNpcAnim(uintptr_t arg1, uint32_t arg2)
         }
     } else if (arg2 != animState.lastKeyAnim) {
         animState.hold = false;
-        auto it = animMap.find({arg2, curAnim});
-        if (it != animMap.end()) {
+        auto am = animMap.find({arg2, curAnim});
+        if (am != animMap.end()) {
             animState.inherit = true;
-            *pAnim = it->second;
+            *pAnim = am->second;
         } else {
             animState.inherit = false;
-            auto it = directAnimMap.find(arg2);
-            if (it != directAnimMap.end()) {
-                *pAnim = it->second;
+
+            uint32_t curKey = 0;
+            auto ak = animKeys.find(arg2);
+            if (ak != animKeys.end()) {
+                for (const auto& key : ak->second) {
+                    if ((GetAsyncKeyState(key) & 0x8000)) {
+                        curKey = key;
+                        break;
+                    }
+                }
+            }
+
+            am = directAnimMap.find({arg2, curKey});
+            if (am != directAnimMap.end()) {
+                *pAnim = am->second;
             } else {
                 *pAnim = arg2;
             }
