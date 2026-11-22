@@ -65,7 +65,7 @@ int32_t hook_sub_1409f0230(uintptr_t arg1)
     return fp_sub_1409f0230(arg1);
 }
 
-void EnableOnline(int64_t lobbyId)
+void EnableOnline(uint64_t lobbyId)
 {
     PatchOnline(lobbyId);
 

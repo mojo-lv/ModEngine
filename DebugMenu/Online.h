@@ -1,3 +1,3 @@
 #pragma once
 
-void EnableOnline(int64_t lobbyId);
+void EnableOnline(uint64_t lobbyId);
