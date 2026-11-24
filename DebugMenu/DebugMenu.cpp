@@ -51,25 +51,23 @@ void HookedDebugMenu(uintptr_t arg1, float* pLocation, wchar_t* pwString)
 
 void HookedNpcList()
 {
+    uintptr_t npcList = *pNPCList;
     uintptr_t* begin = *(uintptr_t**)(*pWorldChrMan + 0x3130);
     uintptr_t* end = *(uintptr_t**)(*pWorldChrMan + 0x3138);
 
-    if (begin == nullptr || end == nullptr || begin >= end) return;
+    if (begin && end && begin < end) {
+        for (uintptr_t* it = begin; it != end; ++it) {
+            uintptr_t npc = *it;
+            if (*(uint8_t*)(npc + 0x1a15) & 1) {
+                fpAddNPC(npcList, it);
 
-    uintptr_t npcList = *pNPCList;
-    size_t count = end - begin;
-    for (size_t i = 0; i < count; i++) {
-        uintptr_t npc = begin[i];
-        if (*(uint8_t*)(npc + 0x1a15) & 1) {
-            if (*(int32_t*)(npc + 0x1ff0) == -2) {
-                // Update Lv0
-                *(int32_t*)(npc + 0x1ff0) = 0;
-                *(uint8_t*)(npc + 0x1a10) |= 1;
-                *(int32_t*)(npc + 0x110) = 0;
+                if (*(int32_t*)(npc + 0x1ff0) == -2) {
+                    // Update Lv0
+                    *(int32_t*)(npc + 0x1ff0) = 0;
+                    *(uint8_t*)(npc + 0x1a10) |= 1;
+                    *(int32_t*)(npc + 0x110) = 0;
+                }
             }
-
-            // Add debug NPCs to the global NPC list
-            fpAddNPC(npcList, begin + i);
         }
     }
 }
