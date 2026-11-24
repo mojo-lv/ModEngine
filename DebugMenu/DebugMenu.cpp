@@ -59,14 +59,13 @@ void HookedNpcList()
         for (uintptr_t* it = begin; it != end; ++it) {
             uintptr_t npc = *it;
             if (*(uint8_t*)(npc + 0x1a15) & 1) {
-                fpAddNPC(npcList, it);
-
                 if (*(int32_t*)(npc + 0x1ff0) == -2) {
                     // Update Lv0
                     *(int32_t*)(npc + 0x1ff0) = 0;
                     *(uint8_t*)(npc + 0x1a10) |= 1;
                     *(int32_t*)(npc + 0x110) = 0;
                 }
+                fpAddNPC(npcList, it);
             }
         }
     }
