@@ -6,6 +6,7 @@ constexpr uintptr_t HOOK_ONLINE_LOCK_ADDR = 0x1409c6634;
 
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
+static uintptr_t* const pSession = reinterpret_cast<uintptr_t*>(0x143d67c90);
 
 typedef uintptr_t(*t_getChrIns)(uintptr_t);
 static t_getChrIns fpGetChrIns = reinterpret_cast<t_getChrIns>(0x1409c31f0);
@@ -18,6 +19,13 @@ static t_sub_1410731f0 fp_sub_1410731f0 = nullptr;
 
 typedef int32_t(*t_sub_1409f0230)(uintptr_t);
 static t_sub_1409f0230 fp_sub_1409f0230 = nullptr;
+
+typedef bool(*t_sub_140694c70)(uintptr_t, uintptr_t);
+static t_sub_140694c70 fp_sub_140694c70 = nullptr;
+
+typedef bool(*t_get_state)();
+static t_get_state fp_sub_140a91290 = nullptr;
+static t_get_state fp_sub_140a90030 = reinterpret_cast<t_get_state>(0x140a90030);
 
 int64_t HookedCreateLobbyResult(void* arg1, uint64_t* arg2)
 {
@@ -65,6 +73,23 @@ int32_t hook_sub_1409f0230(uintptr_t arg1)
     return fp_sub_1409f0230(arg1);
 }
 
+bool hook_sub_140694c70(uintptr_t arg1, uintptr_t arg2)
+{
+    if (arg1 == 0x143afd560) {
+        // Skip BlockClear2
+        return false;
+    }
+    return fp_sub_140694c70(arg1, arg2);
+}
+
+bool hook_sub_140a91290()
+{
+    if (*(uint32_t*)(*pSession + 0xdc) == 4) {
+        return fp_sub_140a90030();
+    }
+    return fp_sub_140a91290();
+}
+
 void EnableOnline(uint64_t lobbyId)
 {
     PatchOnline(lobbyId);
@@ -82,5 +107,10 @@ void EnableOnline(uint64_t lobbyId)
                     reinterpret_cast<LPVOID*>(&fpCreateLobbyResult));
         MH_CreateHook(reinterpret_cast<LPVOID>(0x1410731f0), &hook_sub_1410731f0,
                     reinterpret_cast<LPVOID*>(&fp_sub_1410731f0));
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140694c70), &hook_sub_140694c70,
+                    reinterpret_cast<LPVOID*>(&fp_sub_140694c70));
+    } else {
+        MH_CreateHook(reinterpret_cast<LPVOID>(0x140a91290), &hook_sub_140a91290,
+                    reinterpret_cast<LPVOID*>(&fp_sub_140a91290));
     }
 }

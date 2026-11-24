@@ -282,12 +282,7 @@ void PatchOnline(uint64_t lobbyId)
     bytes = {0x20, 0x01};
     PatchMemory(0x1407dece1, bytes);
 
-    if (lobbyId == 0) {
-        // Host Patch
-        bytes = {0xeb};
-        PatchMemory(0x140694c8c, bytes);
-    } else {
-        // Client Patch
+    if (lobbyId > 0) {
         // CHR_TYPE
         bytes = {0x00};
         PatchMemory(0x1408aee10, bytes);
