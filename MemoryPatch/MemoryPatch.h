@@ -17,5 +17,5 @@ void PatchNpcMoveHook(uintptr_t hookAddress);
 
 void PatchCallHook(uintptr_t hookAddress);
 
-void PatchOnlineLockHook(uintptr_t hookAddress);
+void PatchLockOnPlayerHook(uintptr_t hookAddress);
 void PatchOnline(uint64_t lobbyId);

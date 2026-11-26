@@ -245,7 +245,7 @@ void PatchCallHook(uintptr_t hookAddress)
     PatchMemory(hookAddress, bytes);
 }
 
-void PatchOnlineLockHook(uintptr_t hookAddress)
+void PatchLockOnPlayerHook(uintptr_t hookAddress)
 {
     /*  movzx eax, byte [rdi+0x72]
         and al, 0x1

@@ -2,7 +2,7 @@
 #include "MemoryPatch/MemoryPatch.h"
 #include "Online.h"
 
-constexpr uintptr_t HOOK_ONLINE_LOCK_ADDR = 0x1409c6634;
+constexpr uintptr_t HOOK_LOCK_ON_PLAYER_ADDR = 0x1409c6634;
 
 static uintptr_t* const pWorldChrMan = reinterpret_cast<uintptr_t*>(0x143d7a1e0);
 static uintptr_t* const pNPCPlayer = reinterpret_cast<uintptr_t*>(0x143d7a388);
@@ -37,7 +37,7 @@ int64_t HookedCreateLobbyResult(void* arg1, uint64_t* arg2)
     return fpCreateLobbyResult(arg1, arg2);
 }
 
-bool HookedOnlineLock(uintptr_t arg1)
+bool HookedLockOnPlayer(uintptr_t arg1)
 {
     if (*(uint8_t*)(arg1 + 0x72) & 1) return true;
 
@@ -75,7 +75,7 @@ int32_t hook_sub_1409f0230(uintptr_t arg1)
 
 bool hook_sub_140694c70(uintptr_t arg1, uintptr_t arg2)
 {
-    if (arg1 == 0x143afd560) {
+    if (arg1 == 0x143afd560 && *(uint32_t*)(*pSession + 0xdc) == 5) {
         // Skip BlockClear2
         return false;
     }
@@ -97,9 +97,9 @@ void EnableOnline(uint64_t lobbyId)
     MH_CreateHook(reinterpret_cast<LPVOID>(0x1409f0230), &hook_sub_1409f0230,
                     reinterpret_cast<LPVOID*>(&fp_sub_1409f0230));
 
-    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_ONLINE_LOCK_ADDR), &HookedOnlineLock, NULL) == MH_OK) {
-        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_ONLINE_LOCK_ADDR));
-        PatchOnlineLockHook(HOOK_ONLINE_LOCK_ADDR);
+    if (MH_CreateHook(reinterpret_cast<LPVOID>(HOOK_LOCK_ON_PLAYER_ADDR), &HookedLockOnPlayer, NULL) == MH_OK) {
+        MH_EnableHook(reinterpret_cast<LPVOID>(HOOK_LOCK_ON_PLAYER_ADDR));
+        PatchLockOnPlayerHook(HOOK_LOCK_ON_PLAYER_ADDR);
     }
 
     if (lobbyId == 0) {
